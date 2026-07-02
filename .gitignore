@@ -1,0 +1,14 @@
+# Swift Package Manager
+/.build/
+/Packages/
+Package.resolved
+
+# Xcode (when opened in full Xcode)
+DerivedData/
+xcuserdata/
+*.xcuserstate
+.swiftpm/xcode/
+.swiftpm/xcode/package.xcworkspace/xcuserdata/
+
+# macOS
+.DS_Store

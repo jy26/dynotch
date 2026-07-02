@@ -1,0 +1,16 @@
+dynotch — license to be determined
+===================================
+
+Copyright (c) 2026 the dynotch authors.
+
+The license for this project has NOT been decided yet. Until a license is chosen
+and this file is replaced, all rights are reserved: no permission is granted to
+use, copy, modify, or distribute this software.
+
+This is intentional — the project is keeping its options open between an
+open-source release and a commercial one (see README.md). The planned third-party
+dependency, mediaremote-adapter, is BSD-3-licensed and is compatible with either
+choice.
+
+TODO (Milestone 6): replace this file with the chosen license before any public
+release or distribution.
