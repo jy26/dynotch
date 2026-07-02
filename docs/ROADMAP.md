@@ -26,9 +26,10 @@ Legend: `[x]` done · `[ ]` not started.
 - [x] **1.1** `ScreenGeometry` — compute the notch rect from `safeAreaInsets.top`
   + `auxiliaryTopLeftArea`/`auxiliaryTopRightArea`. *Done when:* logs correct
   notch dimensions on the built-in display. ✅ verified: 185×32 pt, centered.
-- [ ] **1.2** `NotchPanel` — borderless, non-activating, transparent, `.statusBar`,
+- [x] **1.2** `NotchPanel` — borderless, non-activating, transparent, `.statusBar`,
   all-Spaces; show a temporary tinted rect at the notch. *Done when:* the rect
-  sits over the notch and is visible on every Space.
+  sits over the notch and is visible on every Space. ✅ verified on-device: tint
+  sits over the notch, persists across Spaces and full-screen apps.
 - [ ] **1.3** Collapsed pill — black rounded pill sized to the notch. *Done when:*
   it visually merges with the physical notch.
 - [ ] **1.4** Display edge cases — no-notch / external displays hide or render a

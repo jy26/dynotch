@@ -2,17 +2,17 @@ import AppKit
 
 /// Owns process-wide, non-SwiftUI concerns: the menu-bar status item and, from
 /// Milestone 1 onward, the notch `NSPanel`.
+@MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem?
+    private let notchController = NotchWindowController()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Menu-bar agent: no Dock icon, no app menu.
         NSApp.setActivationPolicy(.accessory)
         setUpStatusItem()
         logNotchGeometry()
-
-        // TODO: Milestone 1 — create and show the notch NSPanel here
-        //       (see NotchWindowController / NotchPanel).
+        notchController.show()
     }
 
     private func setUpStatusItem() {
