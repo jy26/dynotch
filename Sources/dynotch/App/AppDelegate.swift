@@ -12,7 +12,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.setActivationPolicy(.accessory)
         setUpStatusItem()
         logNotchGeometry()
-        notchController.show()
+        notchController.start()
     }
 
     private func setUpStatusItem() {

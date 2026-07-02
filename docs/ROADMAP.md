@@ -33,8 +33,11 @@ Legend: `[x]` done · `[ ]` not started.
 - [x] **1.3** Collapsed pill — black rounded pill sized to the notch. *Done when:*
   it visually merges with the physical notch. ✅ verified on-device: merges cleanly
   (UnevenRoundedRectangle, square top / rounded bottom, ~10 pt).
-- [ ] **1.4** Display edge cases — no-notch / external displays hide or render a
-  top-center fallback. *Done when:* external monitor & non-notched Macs behave.
+- [x] **1.4** Display edge cases — no-notch / external displays hide cleanly (no
+  fallback pill), and the panel repositions/shows/hides on live display changes
+  (`didChangeScreenParametersNotification`). *Done when:* external monitor &
+  non-notched Macs behave. ✅ verified on-device: dock/undock, clamshell, lid-open,
+  resolution change (185×32 ↔ 220×38, always centered), and sleep/wake all correct.
 
 ## Milestone 2 — Hover & expansion
 
