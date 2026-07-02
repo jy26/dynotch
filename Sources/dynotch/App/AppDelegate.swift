@@ -9,6 +9,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Menu-bar agent: no Dock icon, no app menu.
         NSApp.setActivationPolicy(.accessory)
         setUpStatusItem()
+        logNotchGeometry()
 
         // TODO: Milestone 1 — create and show the notch NSPanel here
         //       (see NotchWindowController / NotchPanel).
@@ -34,5 +35,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         item.menu = menu
         statusItem = item
+    }
+
+    /// Logs the detected notch geometry for the built-in display (Milestone 1.1
+    /// verification). Uses `print` so it shows in the terminal under `swift run`.
+    private func logNotchGeometry() {
+        if let screen = ScreenGeometry.notchedScreen(),
+           let notch = ScreenGeometry.notchRect(for: screen) {
+            print("[dyNotch] Notch on \(screen.localizedName): "
+                + "origin=(\(notch.origin.x), \(notch.origin.y)) "
+                + "size=\(notch.width)×\(notch.height) pt "
+                + "(safeAreaInsets.top=\(screen.safeAreaInsets.top))")
+        } else {
+            print("[dyNotch] No notch detected on any screen.")
+        }
+        fflush(stdout)  // ensure the diagnostic is emitted even when piped/redirected
     }
 }

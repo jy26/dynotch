@@ -23,9 +23,9 @@ Legend: `[x]` done · `[ ]` not started.
 
 ## Milestone 1 — Notch window skeleton
 
-- [ ] **1.1** `ScreenGeometry` — compute the notch rect from `safeAreaInsets.top`
+- [x] **1.1** `ScreenGeometry` — compute the notch rect from `safeAreaInsets.top`
   + `auxiliaryTopLeftArea`/`auxiliaryTopRightArea`. *Done when:* logs correct
-  notch dimensions on the built-in display.
+  notch dimensions on the built-in display. ✅ verified: 185×32 pt, centered.
 - [ ] **1.2** `NotchPanel` — borderless, non-activating, transparent, `.statusBar`,
   all-Spaces; show a temporary tinted rect at the notch. *Done when:* the rect
   sits over the notch and is visible on every Space.
