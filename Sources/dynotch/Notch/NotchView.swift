@@ -1,12 +1,20 @@
 import SwiftUI
 
-/// Root SwiftUI view hosted inside the notch panel: the collapsed pill and the
-/// expanded content. Built out across Milestones 1–5.
+/// The collapsed notch pill: a black shape matching the physical notch — square
+/// top corners (flush with the screen edge) and rounded bottom corners — so it
+/// merges into the hardware notch. Milestone 2 grows this into the expanded surface.
 struct NotchView: View {
+    /// Bottom-corner radius, tuned to match the hardware notch (~10 pt).
+    private let bottomCornerRadius: CGFloat = 10
+
     var body: some View {
-        // TEMP (Milestone 1.2): tint so we can confirm the panel aligns to the notch.
-        // TODO: Milestone 1.3 — black rounded pill sized to the notch;
-        //       Milestones 3–5 — expanded media / shelf / activities content.
-        Color.red.opacity(0.5)
+        UnevenRoundedRectangle(
+            topLeadingRadius: 0,
+            bottomLeadingRadius: bottomCornerRadius,
+            bottomTrailingRadius: bottomCornerRadius,
+            topTrailingRadius: 0
+        )
+        .fill(Color.black)
+        // TODO: Milestones 3–5 — expanded media / shelf / activities content.
     }
 }

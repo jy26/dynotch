@@ -30,8 +30,9 @@ Legend: `[x]` done · `[ ]` not started.
   all-Spaces; show a temporary tinted rect at the notch. *Done when:* the rect
   sits over the notch and is visible on every Space. ✅ verified on-device: tint
   sits over the notch, persists across Spaces and full-screen apps.
-- [ ] **1.3** Collapsed pill — black rounded pill sized to the notch. *Done when:*
-  it visually merges with the physical notch.
+- [x] **1.3** Collapsed pill — black rounded pill sized to the notch. *Done when:*
+  it visually merges with the physical notch. ✅ verified on-device: merges cleanly
+  (UnevenRoundedRectangle, square top / rounded bottom, ~10 pt).
 - [ ] **1.4** Display edge cases — no-notch / external displays hide or render a
   top-center fallback. *Done when:* external monitor & non-notched Macs behave.
 
