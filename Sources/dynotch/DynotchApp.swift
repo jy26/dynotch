@@ -2,7 +2,7 @@ import SwiftUI
 
 /// Entry point.
 ///
-/// dynotch runs as a menu-bar *agent* (no Dock icon). The actual notch UI is an
+/// dyNotch runs as a menu-bar *agent* (no Dock icon). The actual notch UI is an
 /// `NSPanel` owned by `AppDelegate` and is added in Milestone 1 — at this stage
 /// the app only installs a menu-bar item so the framework builds and launches.
 @main

@@ -1,4 +1,4 @@
-# dynotch — Roadmap
+# dyNotch — Roadmap
 
 Built incrementally: each item below is roughly one commit — a small,
 self-contained change with its own "Done when" check. We complete a milestone one

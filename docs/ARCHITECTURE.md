@@ -1,12 +1,12 @@
-# dynotch — Architecture
+# dyNotch — Architecture
 
-This document describes how dynotch is put together and the key technical
+This document describes how dyNotch is put together and the key technical
 decisions. It reflects the intended design; most of it is stubbed as of
 Milestone 0 and filled in across later milestones (see [ROADMAP.md](ROADMAP.md)).
 
 ## Shape of the app
 
-dynotch is a **menu-bar agent** — no Dock icon, no main window. It uses the
+dyNotch is a **menu-bar agent** — no Dock icon, no main window. It uses the
 SwiftUI `App` lifecycle with an `NSApplicationDelegateAdaptor`:
 
 - `DynotchApp` (`@main`) declares a `Settings` scene (preferences) and installs
@@ -52,7 +52,7 @@ rest of the menu bar stays click-through.
 ## Now-playing (the hard part)
 
 The private `MediaRemote` framework was locked behind an entitlement check in
-**macOS 15.4**, so linking it directly no longer returns now-playing data. dynotch
+**macOS 15.4**, so linking it directly no longer returns now-playing data. dyNotch
 uses the **[mediaremote-adapter](https://github.com/ungive/mediaremote-adapter)**
 approach instead:
 
@@ -66,7 +66,7 @@ approach instead:
   `MediaRemoteAdapter.framework`, placed in the app's Resources. Build steps will
   be documented here when that milestone lands.
 
-**Consequence:** because this relies on a private framework, dynotch cannot ship
+**Consequence:** because this relies on a private framework, dyNotch cannot ship
 on the Mac App Store — distribution will be direct download / Homebrew,
 code-signed and notarized.
 
@@ -90,6 +90,10 @@ because it builds with just the Xcode **Command Line Tools** (`swift build` /
 when you want an IDE. The menu-bar-agent behavior (no Dock icon) is set in code
 via `NSApp.setActivationPolicy(.accessory)`, so no `Info.plist`/`LSUIElement` is
 needed at this stage.
+
+Code-level identifiers stay lowercase `dynotch` — the SwiftPM product/executable,
+the source directory (`Sources/dynotch/`), and the repo slug. **dyNotch** is the
+display name used in the UI and docs.
 
 When distribution work begins (Milestone 6) we may introduce an app-bundle build
 (entitlements, `Info.plist`, code signing, notarization); the module layout is

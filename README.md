@@ -1,9 +1,10 @@
-# dynotch
+# dyNotch
 
-A Dynamic Island for the MacBook notch — turn the hardware notch into an
-interactive surface for media, files, and glanceable live activities, in the
-spirit of [NotchNook](https://lo.cafe/notchnook), [Alcove](https://tryalcove.com),
-and the open-source [Boring Notch](https://github.com/TheBoredTeam/boring.notch).
+**dyNotch** — a **DY**namic **NOTCH** for your Mac. It turns the MacBook's
+hardware notch into an interactive surface for media, files, and glanceable live
+activities, in the spirit of [NotchNook](https://lo.cafe/notchnook),
+[Alcove](https://tryalcove.com), and the open-source
+[Boring Notch](https://github.com/TheBoredTeam/boring.notch).
 
 > **Status: early WIP.** Milestone 0 (the project framework) is complete: the app
 > builds and runs as a menu-bar agent, with the module layout stubbed out. No
@@ -61,11 +62,15 @@ docs/
 └── ROADMAP.md                # milestone-by-milestone plan
 ```
 
+Lowercase `dynotch` is the slug — used for the repo, the local folder, the
+`Sources/dynotch/` path, and the built executable. **dyNotch** is the display name.
+
 ## Documentation
 
 - [Architecture](docs/ARCHITECTURE.md) — the window model, notch geometry, and
   media-adapter approach.
 - [Roadmap](docs/ROADMAP.md) — the incremental milestone plan.
+- [Branding](docs/BRANDING.md) — the dyNotch name and the DYnoTCH logo concept.
 
 ## Acknowledgements
 

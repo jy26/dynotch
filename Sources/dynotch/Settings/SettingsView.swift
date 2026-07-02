@@ -4,7 +4,7 @@ import SwiftUI
 struct SettingsView: View {
     var body: some View {
         VStack(spacing: 12) {
-            Text("dynotch")
+            Text("dyNotch")
                 .font(.headline)
             Text("Settings coming in a later milestone.")
                 .foregroundStyle(.secondary)

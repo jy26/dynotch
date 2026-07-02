@@ -18,16 +18,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         item.button?.image = NSImage(
             systemSymbolName: "rectangle.topthird.inset.filled",
-            accessibilityDescription: "dynotch"
+            accessibilityDescription: "dyNotch"
         )
 
         let menu = NSMenu()
-        let header = NSMenuItem(title: "dynotch — early WIP", action: nil, keyEquivalent: "")
+        let header = NSMenuItem(title: "dyNotch — early WIP", action: nil, keyEquivalent: "")
         header.isEnabled = false
         menu.addItem(header)
         menu.addItem(.separator())
         menu.addItem(
-            withTitle: "Quit dynotch",
+            withTitle: "Quit dyNotch",
             action: #selector(NSApplication.terminate(_:)),
             keyEquivalent: "q"
         )
