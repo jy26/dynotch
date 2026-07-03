@@ -9,6 +9,7 @@ import SwiftUI
 /// expanded frames.
 @MainActor
 final class NotchWindowController {
+    private let state = NotchState()
     private var panel: NotchPanel?
     private var screenObserver: NSObjectProtocol?
 
@@ -40,11 +41,24 @@ final class NotchWindowController {
         panel.orderFrontRegardless()           // show without activating the app
     }
 
-    /// Lazily builds the reusable panel with its static SwiftUI content.
+    /// Lazily builds the reusable panel: a hover-tracking container hosting the
+    /// SwiftUI content. Hover drives `state.presentation`.
     private func ensurePanel() -> NotchPanel {
         if let panel { return panel }
         let panel = NotchPanel(contentRect: .zero)   // setFrame supplies the rect
-        panel.contentView = NSHostingView(rootView: NotchView())
+
+        let container = NotchContainerView()
+        container.onHoverChange = { [weak self] hovering in
+            self?.state.presentation = hovering ? .expanded : .collapsed
+            print("[dyNotch] hover → \(hovering ? "expanded" : "collapsed")")
+            fflush(stdout)
+        }
+        let hosting = NSHostingView(rootView: NotchView().environmentObject(state))
+        hosting.autoresizingMask = [.width, .height]
+        hosting.frame = container.bounds
+        container.addSubview(hosting)
+
+        panel.contentView = container
         self.panel = panel
         return panel
     }
