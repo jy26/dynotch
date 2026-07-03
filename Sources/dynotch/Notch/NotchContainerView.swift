@@ -37,7 +37,11 @@ final class NotchContainerView: NSView {
         // which emits a spurious exit even though the cursor never left. Trust
         // geometry, not the event: only collapse if the cursor is really outside the
         // (possibly mid-animation) panel frame — otherwise we'd loop expand↔collapse.
-        guard let window, !window.frame.contains(NSEvent.mouseLocation) else { return }
+        // Inset by -2: a cursor pinned at the very top of the screen reports
+        // y == frame.maxY, which CGRect.contains excludes — without the tolerance,
+        // pushing into the notch reads as an exit and bounces the panel once.
+        guard let window,
+              !window.frame.insetBy(dx: -2, dy: -2).contains(NSEvent.mouseLocation) else { return }
         let work = DispatchWorkItem { [weak self] in self?.onHoverChange?(false) }
         pendingExit = work
         DispatchQueue.main.asyncAfter(deadline: .now() + exitDebounce, execute: work)

@@ -11,10 +11,17 @@ import SwiftUI
 @MainActor
 final class NotchWindowController {
     private let state = NotchState()
+    private let nowPlaying: NowPlaying
     private var panel: NotchPanel?
     private var frames: NotchFrames?
     private var screenObserver: NSObjectProtocol?
     private var presentationCancellable: AnyCancellable?
+
+    /// - Parameter nowPlaying: shared now-playing model, injected into the
+    ///   SwiftUI environment for the expanded media UI.
+    init(nowPlaying: NowPlaying) {
+        self.nowPlaying = nowPlaying
+    }
 
     /// Places the panel over the notch (if any) and starts observing display
     /// changes so it repositions / shows / hides live. Call once at launch.
@@ -79,7 +86,9 @@ final class NotchWindowController {
         container.onHoverChange = { [weak self] hovering in
             self?.state.presentation = hovering ? .expanded : .collapsed
         }
-        let hosting = NSHostingView(rootView: NotchView().environmentObject(state))
+        let hosting = NSHostingView(rootView: NotchView()
+            .environmentObject(state)
+            .environmentObject(nowPlaying))
         hosting.autoresizingMask = [.width, .height]
         hosting.frame = container.bounds
         container.addSubview(hosting)

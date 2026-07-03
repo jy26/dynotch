@@ -5,10 +5,10 @@ import AppKit
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem?
-    private let notchController = NotchWindowController()
     private let nowPlaying = NowPlaying()
     // lazy: a stored-property initializer can't reference another stored property.
     private lazy var mediaService = MediaRemoteAdapterService(nowPlaying: nowPlaying)
+    private lazy var notchController = NotchWindowController(nowPlaying: nowPlaying)
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Menu-bar agent: no Dock icon, no app menu.

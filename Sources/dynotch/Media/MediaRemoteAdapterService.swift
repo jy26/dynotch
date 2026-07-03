@@ -152,6 +152,12 @@ final class MediaRemoteAdapterService {
     private func apply(_ payload: TrackInfo.Payload) {
         restartAttempts = 0   // healthy stream → reset the crash-loop budget
 
+        // Position carried forward to now under the OLD playing state — captured
+        // before mutating, so payloads without elapsed info (late artwork, some
+        // pause events) don't reset the clock to 0.
+        let now = Date()
+        let carriedElapsed = nowPlaying.displayedElapsed(at: now)
+
         let sameTrack = payload.title == nowPlaying.title && payload.artist == nowPlaying.artist
         nowPlaying.title = payload.title
         nowPlaying.artist = payload.artist
@@ -162,7 +168,25 @@ final class MediaRemoteAdapterService {
         }
         nowPlaying.isPlaying = payload.isPlaying ?? false
         nowPlaying.duration = (payload.durationMicros ?? 0) / 1_000_000
-        nowPlaying.elapsed = payload.currentElapsedTime ?? 0   // snapshot; live ticking is 3.3
+        if let elapsed = payload.currentElapsedTime {
+            // Stale-data guard: pause/unpause payloads can carry a position
+            // measured seconds ago, which would blip the bar backwards. Trust the
+            // payload's own measurement timestamp — a real seek (any direction,
+            // any size) is freshly measured and passes through; only an OLD
+            // snapshot that moves us backward on the same track gets held.
+            let age = payload.timestampEpochMicros
+                .map { Date().timeIntervalSince1970 - $0 / 1_000_000 } ?? 0
+            if sameTrack, elapsed < carriedElapsed, age > 2 {
+                nowPlaying.elapsed = carriedElapsed
+            } else {
+                nowPlaying.elapsed = elapsed
+            }
+        } else if sameTrack {
+            nowPlaying.elapsed = carriedElapsed   // no elapsed in this payload — keep position
+        } else {
+            nowPlaying.elapsed = 0                // new track with no position info
+        }
+        nowPlaying.elapsedAt = now   // the UI extrapolates live progress from here
 
         let key = (payload.title, payload.artist, payload.isPlaying ?? false, payload.bundleIdentifier)
         if lastLogged == nil || lastLogged! != key {
@@ -181,6 +205,7 @@ final class MediaRemoteAdapterService {
         nowPlaying.isPlaying = false
         nowPlaying.elapsed = 0
         nowPlaying.duration = 0
+        nowPlaying.elapsedAt = nil
         if lastLogged != nil {
             lastLogged = nil
             print("[dyNotch] now playing: nothing")

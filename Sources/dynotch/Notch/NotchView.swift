@@ -3,7 +3,7 @@ import SwiftUI
 /// The notch surface. Collapsed: a black pill flush with the hardware notch — square
 /// top corners, rounded bottom — so it merges into the physical notch. Expanded (on
 /// hover): the panel grows it (AppKit); this view morphs the bottom corner radius and
-/// fades in a placeholder on the same clock, so the two read as one motion.
+/// fades in the media UI on the same clock, so the two read as one motion.
 struct NotchView: View {
     @EnvironmentObject private var state: NotchState
 
@@ -17,11 +17,14 @@ struct NotchView: View {
             topTrailingRadius: 0
         )
         .fill(Color.black)
-        .overlay {
-            // M2 placeholder — M3 swaps in the real media UI here.
-            Text("dyNotch")
-                .font(.headline)
-                .foregroundStyle(.white.opacity(0.55))
+        .overlay(alignment: .top) {
+            // One stable instance, opacity-gated (an `if expanded` transition
+            // churns view identity and flickers on quick re-hover). Fixed at the
+            // final expanded size and top-anchored: the growing panel reveals it
+            // without reflowing. The 1 Hz ticker while collapsed is negligible.
+            MediaPlayerView()
+                .frame(width: ScreenGeometry.expandedSize.width,
+                       height: ScreenGeometry.expandedSize.height)
                 .opacity(expanded ? 1 : 0)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)   // fill the panel bounds

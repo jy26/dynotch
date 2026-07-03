@@ -66,7 +66,12 @@ Legend: `[x]` done · `[ ]` not started.
   `NowPlaying`. *Done when:* it logs live track changes. ✅ verified on-device:
   live track/pause/resume logs across Spotify **and** Brave (system-wide source
   switching); kill → auto-restart (×3 cap) works; no orphaned perl after quit.
-- [ ] **3.3** Expanded media UI — artwork, title, artist, live progress.
+- [x] **3.3** Expanded media UI — artwork, title, artist, live progress. ✅ verified
+  on-device: artwork/title/artist render below the notch; progress extrapolates
+  between payloads (0.5 s tick), holds steady through pause/unpause via a
+  measurement-timestamp staleness guard (fresh seeks pass, any direction), and
+  the hover surface stays glitch-free (stable overlay identity; top-edge
+  tolerance in the exit guard).
 - [ ] **3.4** Controls — play/pause/next/prev via `run.pl` commands (`play`,
   `pause_command`, `next_track`, `previous_track`). *Done when:* verified against
   Apple Music **and** Spotify, controls round-trip.
