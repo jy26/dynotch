@@ -33,6 +33,11 @@ final class NotchContainerView: NSView {
     }
 
     override func mouseExited(with event: NSEvent) {
+        // Resizing the panel churns the `.inVisibleRect` tracking area every frame,
+        // which emits a spurious exit even though the cursor never left. Trust
+        // geometry, not the event: only collapse if the cursor is really outside the
+        // (possibly mid-animation) panel frame — otherwise we'd loop expand↔collapse.
+        guard let window, !window.frame.contains(NSEvent.mouseLocation) else { return }
         let work = DispatchWorkItem { [weak self] in self?.onHoverChange?(false) }
         pendingExit = work
         DispatchQueue.main.asyncAfter(deadline: .now() + exitDebounce, execute: work)

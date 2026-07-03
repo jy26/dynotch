@@ -1,4 +1,5 @@
 import AppKit
+import Combine
 import SwiftUI
 
 /// Creates the `NotchPanel`, positions it over the notch, and keeps it in sync
@@ -9,15 +10,24 @@ import SwiftUI
 /// expanded frames.
 @MainActor
 final class NotchWindowController {
+    private static let animationDuration: TimeInterval = 0.28
+
     private let state = NotchState()
     private var panel: NotchPanel?
+    private var frames: NotchFrames?
     private var screenObserver: NSObjectProtocol?
+    private var presentationCancellable: AnyCancellable?
 
     /// Places the panel over the notch (if any) and starts observing display
     /// changes so it repositions / shows / hides live. Call once at launch.
     func start() {
         guard screenObserver == nil else { return }   // idempotent: safe to call once
         updatePlacement()
+        presentationCancellable = state.$presentation
+            .removeDuplicates()
+            .sink { [weak self] presentation in
+                self?.applyPresentation(presentation, animated: true)
+            }
         screenObserver = NotificationCenter.default.addObserver(
             forName: NSApplication.didChangeScreenParametersNotification,
             object: nil,
@@ -37,8 +47,28 @@ final class NotchWindowController {
             return
         }
         let panel = ensurePanel()
-        panel.setFrame(notch, display: true)   // notch rect is in global screen coords
+        frames = ScreenGeometry.frames(for: screen, collapsed: notch)
+        applyPresentation(state.presentation, animated: false)   // reposition for the new frames
         panel.orderFrontRegardless()           // show without activating the app
+    }
+
+    /// Sizes the panel to the collapsed or expanded frame, animating the resize on
+    /// hover transitions and snapping instantly on display changes. AppKit owns the
+    /// frame animation; SwiftUI just fills whatever bounds it's given.
+    private func applyPresentation(_ presentation: NotchState.Presentation, animated: Bool) {
+        guard let panel, let frames else { return }
+        let target = (presentation == .expanded) ? frames.expanded : frames.collapsed
+        guard panel.frame != target else { return }   // no-op / re-entrancy guard
+        if animated {
+            NSAnimationContext.runAnimationGroup { ctx in
+                ctx.duration = Self.animationDuration
+                ctx.timingFunction = CAMediaTimingFunction(name: .easeOut)
+                ctx.allowsImplicitAnimation = true
+                panel.animator().setFrame(target, display: true)
+            }
+        } else {
+            panel.setFrame(target, display: true)
+        }
     }
 
     /// Lazily builds the reusable panel: a hover-tracking container hosting the
@@ -68,6 +98,4 @@ final class NotchWindowController {
             NotificationCenter.default.removeObserver(screenObserver)
         }
     }
-
-    // TODO: Milestone 2 — resize between collapsed and expanded frames.
 }

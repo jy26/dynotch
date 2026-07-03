@@ -27,3 +27,26 @@ enum ScreenGeometry {
         NSScreen.screens.first { notchRect(for: $0) != nil }
     }
 }
+
+/// Collapsed + expanded panel frames, both in global screen coords (y-up).
+struct NotchFrames {
+    let collapsed: CGRect
+    let expanded: CGRect
+}
+
+extension ScreenGeometry {
+    /// Milestone 2 placeholder — real size arrives with M3–5 content.
+    static let expandedSize = CGSize(width: 520, height: 180)
+
+    /// Expanded panel: top edge flush with the screen top, centered on the notch,
+    /// grows down + outward. Guarantees `expanded ⊇ collapsed` so the cursor that
+    /// triggered expansion stays inside the grown rect (no hover oscillation).
+    static func frames(for screen: NSScreen, collapsed notch: CGRect) -> NotchFrames {
+        let size = expandedSize
+        let top = notch.maxY                    // == screen.frame.maxY (flush top)
+        var x = notch.midX - size.width / 2
+        x = min(max(x, screen.frame.minX), screen.frame.maxX - size.width)   // clamp on-screen
+        let expanded = CGRect(x: x, y: top - size.height, width: size.width, height: size.height)
+        return NotchFrames(collapsed: notch, expanded: expanded)
+    }
+}
