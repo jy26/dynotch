@@ -1,8 +1,12 @@
+import AppKit
 import Foundation
-import MediaRemoteAdapter
+// TrackInfo — the fork's decoder handles isPlaying Bool-or-Int, PID-as-string,
+// and base64 → NSImage. @preconcurrency: the module predates strict concurrency;
+// TrackInfo is a value struct handed across the queue→main hop once.
+@preconcurrency import MediaRemoteAdapter
 
-/// Bridges to the mediaremote-adapter package (a Perl script + adapter dylib)
-/// to read now-playing metadata and send playback commands.
+/// Streams now-playing metadata from the mediaremote-adapter package (a Perl
+/// script + adapter dylib) into `NowPlaying`.
 ///
 /// This is the workaround for the macOS 15.4+ MediaRemote entitlement lock-down:
 /// the system Perl binary (`com.apple.perl`) is still granted MediaRemote access,
@@ -11,64 +15,200 @@ import MediaRemoteAdapter
 /// (`Bundle(for:).executablePath`) only works inside an .app bundle with the
 /// product embedded as a framework — under bare `swift run` it resolves to our
 /// executable. See docs/ARCHITECTURE.md.
+///
+/// The `loop` command emits one full JSON payload per line (this fork never sends
+/// diffs), the literal line `NIL` when nothing is playing, and nothing at all for
+/// payloads with an empty title. It reads playback commands from stdin — we hold
+/// the stdin pipe now so Milestone 3.4's controls can write to it.
 @MainActor
 final class MediaRemoteAdapterService {
-    // TODO: Milestone 3.2 — spawn `loop` via Process, parse JSON lines into
-    //       NowPlaying, and send playback commands (`play`, `pause_command`,
-    //       `next_track`, `previous_track`). Replaces the smoke test below.
+    private static let maxRestartAttempts = 3
 
-    /// TEMPORARY (3.1): proves the perl → dylib chain works under `swift run`.
-    /// Locates the adapter artifacts next to our executable
-    /// (`.build/<triple>/debug/` under `swift run`), runs a one-shot `get`, and
-    /// logs the result. Removed in 3.2, which keeps the same locate-and-spawn
-    /// pattern for the streaming `loop` command.
-    static func runAdapterSmokeTest() {
-        // Referencing the module's type proves the dependency linked and loaded.
-        print("[dyNotch] mediaremote-adapter linked: \(MediaController.self)")
+    private let nowPlaying: NowPlaying
+    private var process: Process?
+    private var stdinPipe: Pipe?          // loop's command channel — used in 3.4
+    private var isStopping = false
+    private var restartAttempts = 0
 
+    /// Last logged (title, artist, isPlaying, bundleIdentifier) — dedupes the
+    /// now-playing log so elapsed-only payloads don't spam.
+    private var lastLogged: (String?, String?, Bool, String?)?
+
+    init(nowPlaying: NowPlaying) {
+        self.nowPlaying = nowPlaying
+    }
+
+    /// Locates the adapter artifacts and spawns the streaming loop. Safe to call
+    /// again after termination (the restart path does exactly that).
+    func start() {
+        guard let artifacts = Self.locateArtifacts() else {
+            print("[dyNotch] media adapter FAILED: dylib or run.pl not found next to executable")
+            fflush(stdout)
+            return
+        }
+        spawnLoop(runPL: artifacts.runPL, dylibPath: artifacts.dylibPath)
+    }
+
+    /// Terminates the child. Belt — the adapter's own parent watchdog (ppid poll
+    /// every 5 s) is the suspenders that covers even SIGKILL of dyNotch.
+    func stop() {
+        isStopping = true
+        process?.terminate()
+    }
+
+    /// The adapter artifacts land next to our executable (`.build/<triple>/debug/`
+    /// under `swift run`): the dylib as a sibling file, run.pl inside the package's
+    /// resource bundle — scanned for rather than hardcoding the bundle's name.
+    private static func locateArtifacts() -> (runPL: String, dylibPath: String)? {
         let dir = Bundle.main.bundleURL
         let dylib = dir.appendingPathComponent("libMediaRemoteAdapter.dylib")
         let fm = FileManager.default
-        // run.pl ships in the package's resource bundle; scan for it rather than
-        // hardcoding the bundle's name (derived from the package manifest).
+        guard fm.fileExists(atPath: dylib.path) else { return nil }
         let runPL = (try? fm.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil))?
             .filter { $0.pathExtension == "bundle" }
             .compactMap { Bundle(url: $0)?.path(forResource: "run", ofType: "pl") }
             .first
-        guard fm.fileExists(atPath: dylib.path), let runPL else {
-            print("[dyNotch] mediaremote-adapter smoke test FAILED: "
-                + "dylib or run.pl not found next to executable at \(dir.path)")
-            fflush(stdout)
-            return
+        guard let runPL else { return nil }
+        return (runPL, dylib.path)
+    }
+
+    private func spawnLoop(runPL: String, dylibPath: String) {
+        let p = Process()
+        p.executableURL = URL(fileURLWithPath: "/usr/bin/perl")
+        p.arguments = [runPL, dylibPath, "loop"]
+        let out = Pipe(), err = Pipe(), input = Pipe()
+        p.standardOutput = out
+        p.standardError = err
+        p.standardInput = input   // never inherit the TTY; command channel for 3.4
+
+        // Line buffer, touched only on the FileHandle callback queue (serial per
+        // handle) — payloads with artwork (~160 KB) arrive across many chunks.
+        let buffer = LineBuffer()
+        let newline = Data("\n".utf8)
+        out.fileHandleForReading.readabilityHandler = { [weak self] handle in
+            let chunk = handle.availableData
+            guard !chunk.isEmpty else {          // EOF — clear or the handler spins hot
+                handle.readabilityHandler = nil
+                return
+            }
+            buffer.data.append(chunk)
+            while let nl = buffer.data.firstRange(of: newline) {   // drain ALL complete lines
+                let line = buffer.data.subdata(in: buffer.data.startIndex..<nl.lowerBound)
+                buffer.data.removeSubrange(buffer.data.startIndex..<nl.upperBound)
+                Self.dispatchLine(line, to: self)
+            }
         }
 
-        DispatchQueue.global().async {
-            let process = Process()
-            process.executableURL = URL(fileURLWithPath: "/usr/bin/perl")
-            process.arguments = [runPL, dylib.path, "get"]   // run.pl <dylib> <command>
-            let out = Pipe(), err = Pipe()
-            process.standardOutput = out
-            process.standardError = err
-            do {
-                try process.run()
-                // Drain stdout BEFORE waiting: payloads carry base64 artwork and can
-                // exceed the ~64KB pipe buffer — waitUntilExit first would deadlock
-                // (child blocked writing, us blocked waiting).
-                let stdout = String(data: out.fileHandleForReading.readDataToEndOfFile(),
-                                    encoding: .utf8) ?? ""
-                let stderr = String(data: err.fileHandleForReading.readDataToEndOfFile(),
-                                    encoding: .utf8) ?? ""
-                process.waitUntilExit()
-                // Payloads can be large (base64 artwork) — log a truncated preview.
-                let preview = stdout.isEmpty
-                    ? "no output (is media playing?) stderr: \(stderr.prefix(200))"
-                    : String(stdout.prefix(200))
-                print("[dyNotch] mediaremote-adapter smoke test "
-                    + "(exit \(process.terminationStatus), \(stdout.utf8.count) bytes): \(preview)")
-            } catch {
-                print("[dyNotch] mediaremote-adapter smoke test FAILED to launch perl: \(error)")
+        err.fileHandleForReading.readabilityHandler = { handle in
+            let chunk = handle.availableData
+            guard !chunk.isEmpty else {
+                handle.readabilityHandler = nil
+                return
             }
+            if let text = String(data: chunk, encoding: .utf8),
+               !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                print("[dyNotch] adapter stderr: \(text.trimmingCharacters(in: .newlines))")
+                fflush(stdout)
+            }
+        }
+
+        p.terminationHandler = { [weak self] proc in
+            DispatchQueue.main.async {
+                MainActor.assumeIsolated { self?.handleTermination(status: proc.terminationStatus) }
+            }
+        }
+
+        do {
+            try p.run()
+            process = p
+            stdinPipe = input
+            print("[dyNotch] media adapter loop started (pid \(p.processIdentifier))")
             fflush(stdout)
+        } catch {
+            print("[dyNotch] media adapter FAILED to launch perl: \(error)")
+            fflush(stdout)
+        }
+    }
+
+    /// Runs on the FileHandle callback queue: decodes there (base64 artwork →
+    /// NSImage stays off the main thread), then hops to the main actor. The
+    /// DispatchQueue.main hop preserves line order (per-line Tasks would not).
+    private nonisolated static func dispatchLine(_ line: Data, to service: MediaRemoteAdapterService?) {
+        guard !line.isEmpty else { return }
+        if line == Data("NIL".utf8) {
+            DispatchQueue.main.async { MainActor.assumeIsolated { service?.applyNothingPlaying() } }
+            return
+        }
+        do {
+            let info = try JSONDecoder().decode(TrackInfo.self, from: line)
+            DispatchQueue.main.async { MainActor.assumeIsolated { service?.apply(info.payload) } }
+        } catch {
+            let preview = String(data: line.prefix(120), encoding: .utf8) ?? "<binary>"
+            print("[dyNotch] adapter decode error: \(error) line: \(preview)")
+            fflush(stdout)
+        }
+    }
+
+    private func apply(_ payload: TrackInfo.Payload) {
+        restartAttempts = 0   // healthy stream → reset the crash-loop budget
+
+        let sameTrack = payload.title == nowPlaying.title && payload.artist == nowPlaying.artist
+        nowPlaying.title = payload.title
+        nowPlaying.artist = payload.artist
+        // Artwork transiently drops to null on the same track (right after track
+        // changes, before art loads) — keep the last image rather than flickering.
+        if !sameTrack || payload.artwork != nil {
+            nowPlaying.artwork = payload.artwork
+        }
+        nowPlaying.isPlaying = payload.isPlaying ?? false
+        nowPlaying.duration = (payload.durationMicros ?? 0) / 1_000_000
+        nowPlaying.elapsed = payload.currentElapsedTime ?? 0   // snapshot; live ticking is 3.3
+
+        let key = (payload.title, payload.artist, payload.isPlaying ?? false, payload.bundleIdentifier)
+        if lastLogged == nil || lastLogged! != key {
+            lastLogged = key
+            let app = payload.applicationName.map { " [\($0)]" } ?? ""
+            print("[dyNotch] now playing: \(payload.title ?? "?") — \(payload.artist ?? "?") "
+                + "(\(payload.isPlaying == true ? "playing" : "paused"))\(app)")
+            fflush(stdout)
+        }
+    }
+
+    private func applyNothingPlaying() {
+        nowPlaying.title = nil
+        nowPlaying.artist = nil
+        nowPlaying.artwork = nil
+        nowPlaying.isPlaying = false
+        nowPlaying.elapsed = 0
+        nowPlaying.duration = 0
+        if lastLogged != nil {
+            lastLogged = nil
+            print("[dyNotch] now playing: nothing")
+            fflush(stdout)
+        }
+    }
+
+    /// Mutable line buffer captured by the stdout readability handler.
+    /// @unchecked Sendable: FileHandle invokes the handler serially per handle,
+    /// so `data` is only ever touched from that one callback queue.
+    private final class LineBuffer: @unchecked Sendable {
+        var data = Data()
+    }
+
+    private func handleTermination(status: Int32) {
+        process = nil
+        stdinPipe = nil
+        print("[dyNotch] adapter loop exited (status \(status))")
+        fflush(stdout)
+        guard !isStopping, restartAttempts < Self.maxRestartAttempts else { return }
+        restartAttempts += 1
+        print("[dyNotch] adapter loop restarting (attempt \(restartAttempts)/\(Self.maxRestartAttempts))")
+        fflush(stdout)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in
+            MainActor.assumeIsolated {
+                guard let self, !self.isStopping else { return }
+                self.start()
+            }
         }
     }
 }

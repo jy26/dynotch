@@ -62,8 +62,10 @@ Legend: `[x]` done · `[ ]` not started.
   ARCHITECTURE.md + THIRD-PARTY.md. ✅ verified on-device: one-shot `get` returned
   a live Spotify payload (exit 0, ~159 KB incl. artwork) through perl → dylib →
   MediaRemote. Build needs `CC=clang` (shell exports a GNU gcc).
-- [ ] **3.2** `MediaRemoteAdapterService` — spawn `loop`, parse JSON →
-  `NowPlaying`. *Done when:* it logs live track changes.
+- [x] **3.2** `MediaRemoteAdapterService` — spawn `loop`, parse JSON →
+  `NowPlaying`. *Done when:* it logs live track changes. ✅ verified on-device:
+  live track/pause/resume logs across Spotify **and** Brave (system-wide source
+  switching); kill → auto-restart (×3 cap) works; no orphaned perl after quit.
 - [ ] **3.3** Expanded media UI — artwork, title, artist, live progress.
 - [ ] **3.4** Controls — play/pause/next/prev via `run.pl` commands (`play`,
   `pause_command`, `next_track`, `previous_track`). *Done when:* verified against

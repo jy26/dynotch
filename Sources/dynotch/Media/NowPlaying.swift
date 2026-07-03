@@ -1,7 +1,9 @@
 import AppKit
 import Combine
 
-/// Observable now-playing state fed by `MediaRemoteAdapter` (Milestone 3).
+/// Observable now-playing state, populated live by `MediaRemoteAdapterService`.
+/// `elapsed`/`duration` are event-time snapshots in seconds; live progress
+/// ticking is the UI's job (Milestone 3.3).
 @MainActor
 final class NowPlaying: ObservableObject {
     @Published var title: String?
@@ -10,6 +12,4 @@ final class NowPlaying: ObservableObject {
     @Published var isPlaying: Bool = false
     @Published var elapsed: TimeInterval = 0
     @Published var duration: TimeInterval = 0
-
-    // TODO: Milestone 3 — populated from the media-remote adapter stream.
 }
