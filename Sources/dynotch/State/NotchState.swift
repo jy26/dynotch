@@ -1,4 +1,5 @@
 import Combine
+import Foundation
 
 /// Presentation state of the notch surface.
 ///
@@ -20,5 +21,6 @@ final class NotchState: ObservableObject {
     @Published var presentation: Presentation = .collapsed
     @Published var tab: Tab = .media
 
-    // TODO: Milestone 2 — hover tracking drives `presentation`.
+    /// Shared so the AppKit frame resize and the SwiftUI content morph run on one clock.
+    static let animationDuration: TimeInterval = 0.28
 }

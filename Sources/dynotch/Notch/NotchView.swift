@@ -1,20 +1,30 @@
 import SwiftUI
 
-/// The collapsed notch pill: a black shape matching the physical notch — square
-/// top corners (flush with the screen edge) and rounded bottom corners — so it
-/// merges into the hardware notch. Milestone 2 grows this into the expanded surface.
+/// The notch surface. Collapsed: a black pill flush with the hardware notch — square
+/// top corners, rounded bottom — so it merges into the physical notch. Expanded (on
+/// hover): the panel grows it (AppKit); this view morphs the bottom corner radius and
+/// fades in a placeholder on the same clock, so the two read as one motion.
 struct NotchView: View {
-    /// Bottom-corner radius, tuned to match the hardware notch (~10 pt).
-    private let bottomCornerRadius: CGFloat = 10
+    @EnvironmentObject private var state: NotchState
+
+    private var expanded: Bool { state.presentation == .expanded }
 
     var body: some View {
         UnevenRoundedRectangle(
             topLeadingRadius: 0,
-            bottomLeadingRadius: bottomCornerRadius,
-            bottomTrailingRadius: bottomCornerRadius,
+            bottomLeadingRadius: expanded ? 24 : 10,
+            bottomTrailingRadius: expanded ? 24 : 10,
             topTrailingRadius: 0
         )
         .fill(Color.black)
-        // TODO: Milestones 3–5 — expanded media / shelf / activities content.
+        .overlay {
+            // M2 placeholder — M3 swaps in the real media UI here.
+            Text("dyNotch")
+                .font(.headline)
+                .foregroundStyle(.white.opacity(0.55))
+                .opacity(expanded ? 1 : 0)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)   // fill the panel bounds
+        .animation(.easeOut(duration: NotchState.animationDuration), value: state.presentation)
     }
 }

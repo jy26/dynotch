@@ -10,8 +10,6 @@ import SwiftUI
 /// expanded frames.
 @MainActor
 final class NotchWindowController {
-    private static let animationDuration: TimeInterval = 0.28
-
     private let state = NotchState()
     private var panel: NotchPanel?
     private var frames: NotchFrames?
@@ -61,7 +59,7 @@ final class NotchWindowController {
         guard panel.frame != target else { return }   // no-op / re-entrancy guard
         if animated {
             NSAnimationContext.runAnimationGroup { ctx in
-                ctx.duration = Self.animationDuration
+                ctx.duration = NotchState.animationDuration
                 ctx.timingFunction = CAMediaTimingFunction(name: .easeOut)
                 ctx.allowsImplicitAnimation = true
                 panel.animator().setFrame(target, display: true)
@@ -80,8 +78,6 @@ final class NotchWindowController {
         let container = NotchContainerView()
         container.onHoverChange = { [weak self] hovering in
             self?.state.presentation = hovering ? .expanded : .collapsed
-            print("[dyNotch] hover → \(hovering ? "expanded" : "collapsed")")
-            fflush(stdout)
         }
         let hosting = NSHostingView(rootView: NotchView().environmentObject(state))
         hosting.autoresizingMask = [.width, .height]
