@@ -41,11 +41,19 @@ Legend: `[x]` done · `[ ]` not started.
 
 ## Milestone 2 — Hover & expansion
 
-- [ ] **2.1** Hover detection (`NSTrackingArea` / mouse monitor) → `NotchState`.
-- [ ] **2.2** Panel resize animation between collapsed and expanded frames.
-- [ ] **2.3** SwiftUI content container that morphs collapsed ↔ expanded in sync.
-  *Done when:* hover expands smoothly, leaving collapses.
-- [ ] **2.4** Click-through — menu bar outside the notch stays interactive.
+- [x] **2.1** Hover detection (`NSTrackingArea` / mouse monitor) → `NotchState`.
+  *Done when:* hover toggles state. ✅ verified on-device: an `.activeAlways` tracking
+  area fires enter/exit reliably even while another app is frontmost.
+- [x] **2.2** Panel resize animation between collapsed and expanded frames. ✅ verified
+  on-device: hover animates the panel down/out and back (0.28 s ease-out); a
+  geometry-guarded exit prevents expand/collapse oscillation.
+- [x] **2.3** SwiftUI content container that morphs collapsed ↔ expanded in sync.
+  *Done when:* hover expands smoothly, leaving collapses. ✅ verified on-device: size,
+  bottom-corner radius, and content fade land together.
+- [x] **2.4** Click-through — menu bar outside the notch stays interactive. ✅ verified
+  on-device: collapsed panel = notch rect, so the flanking menu bar stays fully
+  clickable. The expanded panel overlaps the usually-empty center menu bar — evaluated
+  shift-down / collapse-on-approach dodges and kept the simpler overlap (revisit in M3).
 
 ## Milestone 3 — Media & now-playing (MVP)
 
@@ -94,3 +102,11 @@ Legend: `[x]` done · `[ ]` not started.
   before public release. Sign + notarize either way.
 - Which live activities beyond charging + timer (AirDrop, focus mode, …).
 - Whether to build HUD replacement (M7) at all.
+- Expanded-panel menu-bar overlap — while expanded the panel covers the (usually
+  empty) center of the menu bar. Kept the simple overlap for now (M2.4). Options to
+  revisit if it conflicts with real content: (a) **shift-down on approach** —
+  temporarily slide the panel below the bar when the cursor nears it, then rise back;
+  (b) **collapse on approach** — collapse the instant the cursor heads for a menu;
+  (c) **island neck** — keep a notch-width neck through the menu-bar row and flare
+  below it, so the bar is never covered. A first spike of (a)/(b) didn't feel right;
+  they'd need refinement.

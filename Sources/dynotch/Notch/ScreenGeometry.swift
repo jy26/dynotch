@@ -41,6 +41,10 @@ extension ScreenGeometry {
     /// Expanded panel: top edge flush with the screen top, centered on the notch,
     /// grows down + outward. Guarantees `expanded ⊇ collapsed` so the cursor that
     /// triggered expansion stays inside the grown rect (no hover oscillation).
+    ///
+    /// While expanded this overlaps the (usually empty) center of the menu bar. M2.4
+    /// kept the simple overlap; dodge options for later are noted in
+    /// docs/ROADMAP.md → Deferred decisions.
     static func frames(for screen: NSScreen, collapsed notch: CGRect) -> NotchFrames {
         let size = expandedSize
         let top = notch.maxY                    // == screen.frame.maxY (flush top)
