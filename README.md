@@ -6,9 +6,9 @@ activities, in the spirit of [NotchNook](https://lo.cafe/notchnook),
 [Alcove](https://tryalcove.com), and the open-source
 [Boring Notch](https://github.com/TheBoredTeam/boring.notch).
 
-> **Status: early WIP.** Milestone 0 (the project framework) is complete: the app
-> builds and runs as a menu-bar agent, with the module layout stubbed out. No
-> notch UI, media, shelf, or activities are implemented yet — see
+> **Status: early WIP.** Milestones 0–2 are complete: the app runs as a menu-bar
+> agent with an interactive notch surface — hover expands it smoothly, leaving
+> collapses it. Media, shelf, and activities are in progress — see
 > [`docs/ROADMAP.md`](docs/ROADMAP.md).
 
 ## Target
@@ -52,7 +52,7 @@ Sources/dynotch/
 ├── DynotchApp.swift          # @main App + NSApplicationDelegateAdaptor
 ├── App/AppDelegate.swift     # menu-bar status item; owns the notch panel (later)
 ├── Notch/                    # NotchPanel, NotchWindowController, ScreenGeometry, NotchView
-├── Media/                    # MediaRemoteAdapter, NowPlaying
+├── Media/                    # MediaRemoteAdapterService, NowPlaying
 ├── Shelf/                    # ShelfModel, ShelfView
 ├── Activities/               # ActivityModel, ActivityView
 ├── State/NotchState.swift    # collapsed/expanded + active tab
@@ -77,10 +77,12 @@ Lowercase `dynotch` is the slug — used for the repo, the local folder, the
 - [TheBoringNotch/boring.notch](https://github.com/TheBoredTeam/boring.notch) — the
   primary open-source reference.
 - [ungive/mediaremote-adapter](https://github.com/ungive/mediaremote-adapter) (BSD-3)
-  — the mechanism that keeps now-playing working on macOS 15.4+.
+  — the mechanism that keeps now-playing working on macOS 15.4+; consumed via the
+  [ejbills/mediaremote-adapter](https://github.com/ejbills/mediaremote-adapter)
+  SwiftPM fork. See [`docs/THIRD-PARTY.md`](docs/THIRD-PARTY.md).
 
 ## License
 
-**To be decided** — see [`LICENSE`](LICENSE). The one planned third-party
-dependency (mediaremote-adapter) is BSD-3, which is compatible with either an
-open-source or a commercial release.
+**To be decided** — see [`LICENSE`](LICENSE). The one third-party dependency
+(mediaremote-adapter) is BSD-3 — see [`docs/THIRD-PARTY.md`](docs/THIRD-PARTY.md) —
+which is compatible with either an open-source or a commercial release.

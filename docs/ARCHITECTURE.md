@@ -53,22 +53,52 @@ rest of the menu bar stays click-through.
 
 The private `MediaRemote` framework was locked behind an entitlement check in
 **macOS 15.4**, so linking it directly no longer returns now-playing data. dyNotch
-uses the **[mediaremote-adapter](https://github.com/ungive/mediaremote-adapter)**
-approach instead:
+uses the **mediaremote-adapter** approach instead: the system Perl binary
+(`/usr/bin/perl`, bundle id `com.apple.perl`) is still granted MediaRemote access,
+so a Perl script loads a small adapter library **out-of-process** and streams
+now-playing JSON to stdout; dyNotch only reads that stdout and never loads
+MediaRemote itself.
 
-- The system Perl binary (`/usr/bin/perl`, bundle id `com.apple.perl`) is still
-  granted MediaRemote access. A bundled Perl script drives a helper framework that
-  loads MediaRemote out-of-process and streams now-playing JSON to stdout.
-- `MediaRemoteAdapter` spawns that script (`… stream`) via `Process`, parses the
-  JSON lines into `NowPlaying` (an `@MainActor ObservableObject`), and sends
-  playback commands (`send play`/`pause`/`next`/`previous`).
-- Bundled artifacts (planned for Milestone 3): the Perl script and the built
-  `MediaRemoteAdapter.framework`, placed in the app's Resources. Build steps will
-  be documented here when that milestone lands.
+**Dependency.** The canonical repo is
+[ungive/mediaremote-adapter](https://github.com/ungive/mediaremote-adapter)
+(BSD-3), but it ships source-only and its framework build requires CMake — which
+the Command-Line-Tools-only constraint rules out. dyNotch instead depends on the
+**[ejbills/mediaremote-adapter](https://github.com/ejbills/mediaremote-adapter)**
+SwiftPM fork (endorsed by upstream's README), **pinned by revision** in
+`Package.swift`: the fork has no version tags, and SwiftPM only accepts its
+`unsafeFlags` (`-fno-objc-arc`) from revision/branch/local dependencies. Updates
+are deliberate SHA bumps after testing. Attribution lives in
+[THIRD-PARTY.md](THIRD-PARTY.md).
 
-**Consequence:** because this relies on a private framework, dyNotch cannot ship
-on the Mac App Store — distribution will be direct download / Homebrew,
-code-signed and notarized.
+**Build step.** `swift build` is the entire build step: the package compiles the
+ObjC adapter (`CIMediaRemote`) into the dynamic product
+`libMediaRemoteAdapter.dylib` and copies `run.pl` into the resource bundle
+`MediaRemoteAdapter_MediaRemoteAdapter.bundle`, both next to the executable
+(`.build/<triple>/debug/` under `swift run`). Toolchain note: SwiftPM honors the
+`CC` environment variable for C-family targets — if the shell exports a GNU gcc
+(e.g. Homebrew `CC=gcc-15`), the ObjC target fails on clang-only flags; build with
+`CC=clang swift build` or unset `CC`.
+
+**Runtime chain.** dyNotch spawns
+`/usr/bin/perl run.pl <dylib-path> loop` (streaming; `get` for one-shots); perl
+DynaLoader-loads the dylib and emits single-line JSON
+(`{"type":"data","payload":{…}}`). `MediaRemoteAdapterService` parses those lines
+into `NowPlaying` (an `@MainActor ObservableObject`) and sends playback commands
+(`play` / `pause_command` / `toggle_play_pause` / `next_track` / `previous_track`).
+
+**Path caveat (why we own the spawn).** The fork's own Swift API
+(`MediaController`) resolves the dylib via `Bundle(for:).executablePath`, which
+only works inside an `.app` bundle with the product embedded as a framework.
+Under bare `swift run` it resolves to our executable and fails — so dyNotch
+locates the dylib and `run.pl` itself and owns the `Process` spawn layer.
+
+**Milestone 6 notes.** When the app-bundle build lands: embed
+`libMediaRemoteAdapter.dylib` in `Contents/Frameworks` and the resource bundle in
+`Contents/Resources`, and sign the dylib with the app's identity. Notarization is
+expected to pass — the private framework is only loaded inside the perl child
+process. **Consequence:** because this relies on a private framework, dyNotch
+cannot ship on the Mac App Store — distribution will be direct download /
+Homebrew, code-signed and notarized.
 
 ## Module map
 

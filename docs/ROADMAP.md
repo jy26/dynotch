@@ -57,13 +57,17 @@ Legend: `[x]` done · `[ ]` not started.
 
 ## Milestone 3 — Media & now-playing (MVP)
 
-- [ ] **3.1** Bundle `mediaremote-adapter` (Perl script + framework); document the
-  build step in ARCHITECTURE.md.
-- [ ] **3.2** `MediaRemoteAdapter` service — spawn `stream`, parse JSON →
+- [x] **3.1** Integrate `mediaremote-adapter` (ejbills SwiftPM fork, pinned by
+  revision); smoke-test the perl → dylib chain under `swift run`; document in
+  ARCHITECTURE.md + THIRD-PARTY.md. ✅ verified on-device: one-shot `get` returned
+  a live Spotify payload (exit 0, ~159 KB incl. artwork) through perl → dylib →
+  MediaRemote. Build needs `CC=clang` (shell exports a GNU gcc).
+- [ ] **3.2** `MediaRemoteAdapterService` — spawn `loop`, parse JSON →
   `NowPlaying`. *Done when:* it logs live track changes.
 - [ ] **3.3** Expanded media UI — artwork, title, artist, live progress.
-- [ ] **3.4** Controls — play/pause/next/prev via `send`. *Done when:* verified
-  against Apple Music **and** Spotify, controls round-trip.
+- [ ] **3.4** Controls — play/pause/next/prev via `run.pl` commands (`play`,
+  `pause_command`, `next_track`, `previous_track`). *Done when:* verified against
+  Apple Music **and** Spotify, controls round-trip.
 - [ ] **3.5** Collapsed now-playing — mini indicator / visualizer.
 
 ## Milestone 4 — File shelf (MVP)

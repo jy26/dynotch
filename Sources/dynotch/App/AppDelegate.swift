@@ -12,6 +12,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.setActivationPolicy(.accessory)
         setUpStatusItem()
         logNotchGeometry()
+        MediaRemoteAdapterService.runAdapterSmokeTest()   // TEMPORARY (3.1): removed in 3.2
         notchController.start()
     }
 
