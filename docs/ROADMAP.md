@@ -88,9 +88,14 @@ Legend: `[x]` done · `[ ]` not started.
   zero ticks when hidden/paused); bars freeze on pause, pill shrinks to plain
   notch on stop, indicator crossfades in place on expand, steady width across
   track skips (no NIL debounce needed).
-- [ ] **3.6** Shuffle + repeat buttons — `toggle_shuffle` / `toggle_repeat` via
-  stdin; button tint driven by the stream's `shuffleMode`/`repeatMode`.
-  *Done when:* toggles round-trip against Apple Music and Spotify.
+- [ ] **3.6** Shuffle + repeat buttons — **blocked on MediaRemote, deferred to
+  M6.** Built and reverted 2026-07-04: the stdin toggles work against Apple Music
+  (not Spotify — it ignores them), but `shuffleMode`/`repeatMode` are nil in
+  every payload (verified incl. forced one-shot snapshots), so state-driven
+  button tint is impossible via MediaRemote — the round-trip gate can't be met.
+  Future path: AppleScript per-app integration (Music and Spotify both expose
+  shuffle/repeat read+write) — needs Automation permission prompts, pairs with
+  M6's permission-gated features.
 - [ ] **3.7** Seek on the progress bar — click/drag → `set_time <seconds>`;
   scrub position owns the bar mid-drag. *Done when:* forward and backward seeks
   land in both players with no snap-back.
