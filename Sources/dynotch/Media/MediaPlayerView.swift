@@ -101,15 +101,16 @@ struct MediaPlayerView: View {
         }
     }
 
-    /// 3.4a: play/pause only — prev/next land with the full 3.4 commit.
-    /// Sends `toggle_play_pause` rather than branching on `isPlaying` (the mirror
-    /// is stale by construction; toggle always changes real state). The glyph
-    /// reads stream state — its flip after a click is the round-trip proof.
+    /// Play/pause sends `toggle_play_pause` rather than branching on `isPlaying`
+    /// (the mirror is stale by construction; toggle always changes real state).
+    /// The glyph reads stream state — its flip after a click is the round-trip proof.
     private var controls: some View {
         HStack(spacing: 4) {
+            controlButton("backward.fill", size: 13) { sendCommand(.previousTrack) }
             controlButton(nowPlaying.isPlaying ? "pause.fill" : "play.fill", size: 18) {
                 sendCommand(.togglePlayPause)
             }
+            controlButton("forward.fill", size: 13) { sendCommand(.nextTrack) }
         }
         .padding(.leading, -9)   // optical: glyph edge (not hit box) aligns with the title
     }

@@ -16,6 +16,10 @@ final class NotchWindowController {
     private var frames: NotchFrames?
     private var screenObserver: NSObjectProtocol?
     private var presentationCancellable: AnyCancellable?
+    /// Safety net for missed `mouseExited` events (AppKit can drop one around
+    /// clicks/popovers, leaving the panel stuck expanded): while expanded, cheaply
+    /// confirm the cursor is still inside; collapse if events failed us.
+    private var expandedWatchdog: Timer?
 
     private let sendPlaybackCommand: (PlaybackCommand) -> Void
 
@@ -39,6 +43,7 @@ final class NotchWindowController {
             .removeDuplicates()
             .sink { [weak self] presentation in
                 self?.applyPresentation(presentation, animated: true)
+                self?.updateExpandedWatchdog(for: presentation)
             }
         screenObserver = NotificationCenter.default.addObserver(
             forName: NSApplication.didChangeScreenParametersNotification,
@@ -108,7 +113,23 @@ final class NotchWindowController {
         return panel
     }
 
+    private func updateExpandedWatchdog(for presentation: NotchState.Presentation) {
+        expandedWatchdog?.invalidate()
+        expandedWatchdog = nil
+        guard presentation == .expanded else { return }
+        expandedWatchdog = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated {
+                guard let self, let frames = self.frames else { return }
+                // Same tolerance as the container's exit guard (top-edge quirk).
+                if !frames.expanded.insetBy(dx: -2, dy: -2).contains(NSEvent.mouseLocation) {
+                    self.state.presentation = .collapsed
+                }
+            }
+        }
+    }
+
     deinit {
+        expandedWatchdog?.invalidate()
         if let screenObserver {
             NotificationCenter.default.removeObserver(screenObserver)
         }

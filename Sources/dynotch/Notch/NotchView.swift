@@ -26,6 +26,7 @@ struct NotchView: View {
                 .frame(width: ScreenGeometry.expandedSize.width,
                        height: ScreenGeometry.expandedSize.height)
                 .opacity(expanded ? 1 : 0)
+                .allowsHitTesting(expanded)   // no ghost clicks while collapsed
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)   // fill the panel bounds
         .animation(.easeOut(duration: NotchState.animationDuration), value: state.presentation)

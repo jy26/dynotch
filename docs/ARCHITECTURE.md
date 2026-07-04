@@ -84,7 +84,12 @@ ObjC adapter (`CIMediaRemote`) into the dynamic product
 DynaLoader-loads the dylib and emits single-line JSON
 (`{"type":"data","payload":{…}}`). `MediaRemoteAdapterService` parses those lines
 into `NowPlaying` (an `@MainActor ObservableObject`) and sends playback commands
-(`play` / `pause_command` / `toggle_play_pause` / `next_track` / `previous_track`).
+by writing newline-delimited lines to the loop's **stdin** (`play` / `pause` /
+`toggle_play_pause` / `next_track` / `previous_track`) — fire-and-forget; state
+comes back via the stream. UI note: the notch panel is never key, so button
+clicks arrive as "first mouse" — `ClickThroughHostingView` opts in via
+`acceptsFirstMouse`, which delivers clicks to the SwiftUI controls without any
+key-status change (no focus theft).
 
 **Path caveat (why we own the spawn).** The fork's own Swift API
 (`MediaController`) resolves the dylib via `Bundle(for:).executablePath`, which
