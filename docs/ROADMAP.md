@@ -75,13 +75,13 @@ Legend: `[x]` done · `[ ]` not started.
 - [x] **3.4** Controls — play/pause/next/prev via the loop's stdin commands
   (`play`, `pause`, `toggle_play_pause`, `next_track`, `previous_track`).
   *Done when:* verified against Apple Music **and** Spotify, controls round-trip.
-  ✅ verified on-device: Spotify full matrix (toggle/next/prev, icon driven by the
-  stream); Apple Music toggle round-trips; Music ignores skip commands for
-  queue-less local content — Control Center hides those buttons for the same
-  reason (app advertises no skip support), so behavior matches the system
-  control. Click delivery via `acceptsFirstMouse` (no key status, no focus
-  theft). Polish note: gray out unsupported commands if the adapter ever exposes
-  the supported-command set.
+  ✅ verified on-device: full matrix round-trips against **both** Spotify and
+  Apple Music (toggle/next/prev, icon driven by the stream). Caveat: Music
+  ignores skip commands for queue-less single-file content — Control Center
+  hides those buttons for the same reason (the app advertises no skip support);
+  with a real queue, skips work. Click delivery via `acceptsFirstMouse` (no key
+  status, no focus theft). Polish note: gray out unsupported commands if the
+  adapter ever exposes the supported-command set.
 - [ ] **3.5** Collapsed now-playing — mini indicator / visualizer.
 
 ## Milestone 4 — File shelf (MVP)
