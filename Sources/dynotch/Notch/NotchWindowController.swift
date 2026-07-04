@@ -16,6 +16,9 @@ final class NotchWindowController {
     private var frames: NotchFrames?
     private var screenObserver: NSObjectProtocol?
     private var presentationCancellable: AnyCancellable?
+    private var mediaCancellable: AnyCancellable?
+    /// Whether media is loaded — widens the collapsed pill into indicator wings.
+    private var hasMedia = false
     /// Safety net for missed `mouseExited` events (AppKit can drop one around
     /// clicks/popovers, leaving the panel stuck expanded): while expanded, cheaply
     /// confirm the cursor is still inside; collapse if events failed us.
@@ -45,6 +48,15 @@ final class NotchWindowController {
                 self?.applyPresentation(presentation, animated: true)
                 self?.updateExpandedWatchdog(for: presentation)
             }
+        // Media appearing/disappearing resizes a collapsed pill live (3.5 wings).
+        mediaCancellable = nowPlaying.$title
+            .map { $0 != nil }
+            .removeDuplicates()
+            .sink { [weak self] hasMedia in
+                guard let self else { return }
+                self.hasMedia = hasMedia
+                self.applyPresentation(self.state.presentation, animated: true)
+            }
         screenObserver = NotificationCenter.default.addObserver(
             forName: NSApplication.didChangeScreenParametersNotification,
             object: nil,
@@ -65,6 +77,7 @@ final class NotchWindowController {
         }
         let panel = ensurePanel()
         frames = ScreenGeometry.frames(for: screen, collapsed: notch)
+        state.collapsedSize = notch.size       // collapsed content pins to this strip
         applyPresentation(state.presentation, animated: false)   // reposition for the new frames
         panel.orderFrontRegardless()           // show without activating the app
     }
@@ -74,7 +87,8 @@ final class NotchWindowController {
     /// frame animation; SwiftUI just fills whatever bounds it's given.
     private func applyPresentation(_ presentation: NotchState.Presentation, animated: Bool) {
         guard let panel, let frames else { return }
-        let target = (presentation == .expanded) ? frames.expanded : frames.collapsed
+        let target = (presentation == .expanded) ? frames.expanded
+                                                 : frames.collapsed(hasMedia: hasMedia)
         guard panel.frame != target else { return }   // no-op / re-entrancy guard
         if animated {
             NSAnimationContext.runAnimationGroup { ctx in

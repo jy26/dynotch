@@ -20,6 +20,9 @@ final class NotchState: ObservableObject {
 
     @Published var presentation: Presentation = .collapsed
     @Published var tab: Tab = .media
+    /// Collapsed (notch-hugging) pill size for the current screen; set by the
+    /// controller on placement. Collapsed content pins itself to this strip.
+    @Published var collapsedSize: CGSize = .zero
 
     /// Shared so the AppKit frame resize and the SwiftUI content morph run on one clock.
     static let animationDuration: TimeInterval = 0.28

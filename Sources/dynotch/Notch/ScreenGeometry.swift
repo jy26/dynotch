@@ -30,13 +30,24 @@ enum ScreenGeometry {
 
 /// Collapsed + expanded panel frames, both in global screen coords (y-up).
 struct NotchFrames {
-    let collapsed: CGRect
+    let collapsed: CGRect       // == notch rect (idle)
+    let collapsedWide: CGRect   // notch rect + a wing each side (media loaded)
     let expanded: CGRect
+
+    func collapsed(hasMedia: Bool) -> CGRect {
+        hasMedia ? collapsedWide : collapsed
+    }
 }
 
 extension ScreenGeometry {
     /// Milestone 2 placeholder — real size arrives with M3–5 content.
     static let expandedSize = CGSize(width: 520, height: 180)
+
+    /// Width of each black wing flanking the hardware notch while media is
+    /// loaded (Milestone 3.5). Sized for the 22 pt mini artwork (7 pt side
+    /// margins) and the 18 pt visualizer (9 pt margins) within the collapsed
+    /// height; the 22 pt thumb clears the 10 pt bottom corner radius.
+    static let collapsedWingWidth: CGFloat = 36
 
     /// Expanded panel: top edge flush with the screen top, centered on the notch,
     /// grows down + outward. Guarantees `expanded ⊇ collapsed` so the cursor that
@@ -51,6 +62,7 @@ extension ScreenGeometry {
         var x = notch.midX - size.width / 2
         x = min(max(x, screen.frame.minX), screen.frame.maxX - size.width)   // clamp on-screen
         let expanded = CGRect(x: x, y: top - size.height, width: size.width, height: size.height)
-        return NotchFrames(collapsed: notch, expanded: expanded)
+        let wide = notch.insetBy(dx: -collapsedWingWidth, dy: 0)   // same midX, height, top
+        return NotchFrames(collapsed: notch, collapsedWide: wide, expanded: expanded)
     }
 }

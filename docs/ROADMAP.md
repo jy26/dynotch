@@ -82,7 +82,18 @@ Legend: `[x]` done · `[ ]` not started.
   with a real queue, skips work. Click delivery via `acceptsFirstMouse` (no key
   status, no focus theft). Polish note: gray out unsupported commands if the
   adapter ever exposes the supported-command set.
-- [ ] **3.5** Collapsed now-playing — mini indicator / visualizer.
+- [x] **3.5** Collapsed now-playing — mini indicator / visualizer. ✅ verified
+  on-device: while media is loaded the collapsed pill widens by 36 pt wings —
+  mini artwork left, 4-bar decorative visualizer right (paused-gated schedule:
+  zero ticks when hidden/paused); bars freeze on pause, pill shrinks to plain
+  notch on stop, indicator crossfades in place on expand, steady width across
+  track skips (no NIL debounce needed).
+- [ ] **3.6** Shuffle + repeat buttons — `toggle_shuffle` / `toggle_repeat` via
+  stdin; button tint driven by the stream's `shuffleMode`/`repeatMode`.
+  *Done when:* toggles round-trip against Apple Music and Spotify.
+- [ ] **3.7** Seek on the progress bar — click/drag → `set_time <seconds>`;
+  scrub position owns the bar mid-drag. *Done when:* forward and backward seeks
+  land in both players with no snap-back.
 
 ## Milestone 4 — File shelf (MVP)
 
@@ -120,6 +131,13 @@ Legend: `[x]` done · `[ ]` not started.
   before public release. Sign + notarize either way.
 - Which live activities beyond charging + timer (AirDrop, focus mode, …).
 - Whether to build HUD replacement (M7) at all.
+- Collapsed-wing menu-bar overlap (3.5) — while media is loaded the widened pill
+  covers ~36 pt of (normally empty) menu bar per side. Accepted for MVP; shrink
+  the wings if it ever collides with real menu items.
+- Lyrics — LRCLIB is the only viable source (Spotify's API exposes no lyrics;
+  Musixmatch is keyed/restricted): synced LRC line-highlighting when the
+  community file exists, static-text fallback, graceful no-match; the lookup
+  sends track metadata to a third-party service. Decide after 3.6/3.7.
 - Expanded-panel menu-bar overlap — while expanded the panel covers the (usually
   empty) center of the menu bar. Kept the simple overlap for now (M2.4). Options to
   revisit if it conflicts with real content: (a) **shift-down on approach** —
