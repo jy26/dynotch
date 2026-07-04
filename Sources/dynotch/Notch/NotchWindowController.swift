@@ -17,10 +17,17 @@ final class NotchWindowController {
     private var screenObserver: NSObjectProtocol?
     private var presentationCancellable: AnyCancellable?
 
-    /// - Parameter nowPlaying: shared now-playing model, injected into the
-    ///   SwiftUI environment for the expanded media UI.
-    init(nowPlaying: NowPlaying) {
+    private let sendPlaybackCommand: (PlaybackCommand) -> Void
+
+    /// - Parameters:
+    ///   - nowPlaying: shared now-playing model, injected into the SwiftUI
+    ///     environment for the expanded media UI.
+    ///   - sendPlaybackCommand: routes control-button actions to the media
+    ///     service (wired at the composition root).
+    init(nowPlaying: NowPlaying,
+         sendPlaybackCommand: @escaping (PlaybackCommand) -> Void) {
         self.nowPlaying = nowPlaying
+        self.sendPlaybackCommand = sendPlaybackCommand
     }
 
     /// Places the panel over the notch (if any) and starts observing display
@@ -86,9 +93,12 @@ final class NotchWindowController {
         container.onHoverChange = { [weak self] hovering in
             self?.state.presentation = hovering ? .expanded : .collapsed
         }
-        let hosting = NSHostingView(rootView: NotchView()
+        // ClickThroughHostingView: the panel is never key, so button clicks
+        // arrive as "first mouse" and need the accepts-first-mouse opt-in.
+        let hosting = ClickThroughHostingView(rootView: NotchView()
             .environmentObject(state)
-            .environmentObject(nowPlaying))
+            .environmentObject(nowPlaying)
+            .environment(\.sendPlaybackCommand, sendPlaybackCommand))
         hosting.autoresizingMask = [.width, .height]
         hosting.frame = container.bounds
         container.addSubview(hosting)

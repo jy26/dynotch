@@ -5,6 +5,16 @@ import Foundation
 // TrackInfo is a value struct handed across the queue→main hop once.
 @preconcurrency import MediaRemoteAdapter
 
+/// Playback commands understood by the adapter loop's stdin reader
+/// (`executeInlineCommand` in MediaRemoteAdapter.m). Raw value == wire format.
+enum PlaybackCommand: String {
+    case play
+    case pause
+    case togglePlayPause = "toggle_play_pause"
+    case nextTrack = "next_track"
+    case previousTrack = "previous_track"
+}
+
 /// Streams now-playing metadata from the mediaremote-adapter package (a Perl
 /// script + adapter dylib) into `NowPlaying`.
 ///
@@ -36,6 +46,28 @@ final class MediaRemoteAdapterService {
 
     init(nowPlaying: NowPlaying) {
         self.nowPlaying = nowPlaying
+        // A command write can race the child's death: without this, writing to a
+        // broken pipe raises SIGPIPE and kills dyNotch before write(contentsOf:)
+        // can throw. Process-wide and idempotent; the fork does the same.
+        signal(SIGPIPE, SIG_IGN)
+    }
+
+    /// Sends one playback command down the loop's stdin (newline-delimited).
+    /// Fire-and-forget: state comes back via the stream, never from here.
+    func send(_ command: PlaybackCommand) {
+        guard let handle = stdinPipe?.fileHandleForWriting else {
+            print("[dyNotch] command \(command.rawValue) dropped — adapter loop not running")
+            fflush(stdout)
+            return
+        }
+        do {
+            try handle.write(contentsOf: Data((command.rawValue + "\n").utf8))
+            print("[dyNotch] sent command: \(command.rawValue)")
+            fflush(stdout)
+        } catch {
+            print("[dyNotch] command \(command.rawValue) write failed: \(error)")
+            fflush(stdout)
+        }
     }
 
     /// Locates the adapter artifacts and spawns the streaming loop. Safe to call

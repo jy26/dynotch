@@ -8,7 +8,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let nowPlaying = NowPlaying()
     // lazy: a stored-property initializer can't reference another stored property.
     private lazy var mediaService = MediaRemoteAdapterService(nowPlaying: nowPlaying)
-    private lazy var notchController = NotchWindowController(nowPlaying: nowPlaying)
+    private lazy var notchController = NotchWindowController(
+        nowPlaying: nowPlaying,
+        sendPlaybackCommand: { [weak self] in self?.mediaService.send($0) }
+    )
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Menu-bar agent: no Dock icon, no app menu.

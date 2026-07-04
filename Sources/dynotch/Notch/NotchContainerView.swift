@@ -27,6 +27,11 @@ final class NotchContainerView: NSView {
         ))
     }
 
+    /// The panel is never key, so every click is a "first mouse" — accept it so
+    /// clicks on container-owned regions aren't swallowed (the hosting view has
+    /// the same override for the SwiftUI controls).
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+
     override func mouseEntered(with event: NSEvent) {
         pendingExit?.cancel()
         onHoverChange?(true)
