@@ -97,8 +97,11 @@ Legend: `[x]` done · `[ ]` not started.
   shuffle/repeat read+write) — needs Automation permission prompts, pairs with
   M6's permission-gated features.
 - [ ] **3.7** Seek on the progress bar — click/drag → `set_time <seconds>`;
-  scrub position owns the bar mid-drag. *Done when:* forward and backward seeks
-  land in both players with no snap-back.
+  scrub position owns the bar mid-drag. **Spike first** (lesson from 3.6 / the
+  full-screen saga): confirm `set_time` actually moves both players via a
+  temporary trigger BEFORE building the drag UI — position *reads* are verified,
+  position *writes* are not, and MediaRemote commands are optional for apps.
+  *Done when:* forward and backward seeks land in both players with no snap-back.
 
 ## Milestone 4 — File shelf (MVP)
 
