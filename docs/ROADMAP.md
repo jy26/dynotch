@@ -131,6 +131,17 @@ Legend: `[x]` done · `[ ]` not started.
   before public release. Sign + notarize either way.
 - Which live activities beyond charging + timer (AirDrop, focus mode, …).
 - Whether to build HUD replacement (M7) at all.
+- Hide-over-full-screen — attempted post-3.5, reverted after six detection
+  approaches each failed on-device (notched + multi-display Mac): collection-
+  behavior flags (ignored at `.statusBar` level with `canJoinAllSpaces`),
+  full-frame window matching (native full screen letterboxes below the notch),
+  menu-bar-level window presence (a backstop strip persists in full screen),
+  `visibleFrame` (never includes the notch strip on notched Macs), wallpaper-
+  window presence (culled from the on-screen list when fully covered → false
+  hides on desktop), status-item occlusion (window migrates between displays'
+  menu bars → spurious events). Revisit at M6 as a settings toggle built on the
+  Accessibility API (focused window's `AXFullScreen` attribute — reliable, but
+  needs user-granted permission).
 - Collapsed-wing menu-bar overlap (3.5) — while media is loaded the widened pill
   covers ~36 pt of (normally empty) menu bar per side. Accepted for MVP; shrink
   the wings if it ever collides with real menu items.
