@@ -110,6 +110,19 @@ Legend: `[x]` done · `[ ]` not started.
   Spotify and Apple Music with no snap-back (an optimistic local position bridges
   the confirmation gap; `NotchState.isScrubbing` suppresses both collapse paths so
   a drag crossing the panel edge can't fold the panel).
+- [x] **3.8** Lyrics service (LRCLIB) — fetch/parse/cache, log-only; the UI lands
+  with M5's tab system. Privacy: a lookup sends exactly title/artist/album/duration
+  (nothing else), and only for music apps (Spotify, Apple Music) — browser media
+  never leaves the machine; M6 settings adds the opt-out toggle. Verified API
+  contract (probed live 2026-07-04): keyless, unthrottled, ±2 s duration tolerance,
+  `album_name` optional, no-match is a clean JSON 404, instrumentals flagged;
+  courtesy User-Agent identifies the app. *Done when:* logs show synced lines for
+  a Spotify hit, a graceful no-match, a browser-source skip, and cached re-plays
+  (no second fetch). ✅ verified on-device: synced hits (BTS 72 lines, LE SSERAFIM
+  36), cache hits on re-play, browser skips, zero refetch on pause/seek, graceful
+  404 no-match (obscure track), and artist-less local files gated before any
+  request; a late-arriving fetch for a skipped-past track is cached but not
+  applied (stale-response guard).
 
 ## Milestone 4 — File shelf (MVP)
 
@@ -161,10 +174,11 @@ Legend: `[x]` done · `[ ]` not started.
 - Collapsed-wing menu-bar overlap (3.5) — while media is loaded the widened pill
   covers ~36 pt of (normally empty) menu bar per side. Accepted for MVP; shrink
   the wings if it ever collides with real menu items.
-- Lyrics — LRCLIB is the only viable source (Spotify's API exposes no lyrics;
-  Musixmatch is keyed/restricted): synced LRC line-highlighting when the
-  community file exists, static-text fallback, graceful no-match; the lookup
-  sends track metadata to a third-party service. Decide after 3.6/3.7.
+- Lyrics — decided (3.8): LRCLIB, music-apps-only lookups, service built log-only.
+  Still open: UI placement (a lyrics pane when M5's tab system exists), the M6
+  opt-out toggle, and a copyright caveat for any commercial release —
+  community-transcribed lyrics are still copyrighted works; display-only for
+  personal use, revisit alongside the license/paywall decision.
 - Expanded-panel menu-bar overlap — while expanded the panel covers the (usually
   empty) center of the menu bar. Kept the simple overlap for now (M2.4). Options to
   revisit if it conflicts with real content: (a) **shift-down on approach** —

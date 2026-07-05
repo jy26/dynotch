@@ -8,6 +8,10 @@ import Combine
 final class NowPlaying: ObservableObject {
     @Published var title: String?
     @Published var artist: String?
+    @Published var album: String?
+    /// Bundle identifier of the app the media comes from — gates lyrics lookups
+    /// (3.8) to real music apps so browser titles never leave the machine.
+    @Published var sourceBundleID: String?
     @Published var artwork: NSImage?
     @Published var isPlaying: Bool = false
     @Published var elapsed: TimeInterval = 0

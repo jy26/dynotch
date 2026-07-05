@@ -8,6 +8,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let nowPlaying = NowPlaying()
     // lazy: a stored-property initializer can't reference another stored property.
     private lazy var mediaService = MediaRemoteAdapterService(nowPlaying: nowPlaying)
+    private lazy var lyricsService = LyricsService(nowPlaying: nowPlaying)
     private lazy var notchController = NotchWindowController(
         nowPlaying: nowPlaying,
         sendPlaybackCommand: { [weak self] in self?.mediaService.send($0) },
@@ -20,6 +21,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         setUpStatusItem()
         logNotchGeometry()
         mediaService.start()
+        lyricsService.start()
         notchController.start()
     }
 

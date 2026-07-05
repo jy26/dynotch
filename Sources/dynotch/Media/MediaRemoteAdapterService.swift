@@ -208,6 +208,8 @@ final class MediaRemoteAdapterService {
         let sameTrack = payload.title == nowPlaying.title && payload.artist == nowPlaying.artist
         nowPlaying.title = payload.title
         nowPlaying.artist = payload.artist
+        nowPlaying.album = payload.album
+        nowPlaying.sourceBundleID = payload.bundleIdentifier
         // Artwork transiently drops to null on the same track (right after track
         // changes, before art loads) — keep the last image rather than flickering.
         if !sameTrack || payload.artwork != nil {
@@ -248,6 +250,8 @@ final class MediaRemoteAdapterService {
     private func applyNothingPlaying() {
         nowPlaying.title = nil
         nowPlaying.artist = nil
+        nowPlaying.album = nil
+        nowPlaying.sourceBundleID = nil
         nowPlaying.artwork = nil
         nowPlaying.isPlaying = false
         nowPlaying.elapsed = 0
