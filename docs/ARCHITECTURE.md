@@ -92,15 +92,21 @@ clicks arrive as "first mouse" — `ClickThroughHostingView` opts in via
 `acceptsFirstMouse`, which delivers clicks to the SwiftUI controls without any
 key-status change (no focus theft).
 
-**Lyrics (3.8).** `LyricsService` is the app's first network component: on track
-change (deduped on identity, debounced 1.5 s) it queries LRCLIB —
+**Lyrics (3.8–3.9).** `LyricsService` is the app's first network component: on
+track change (deduped on identity; zero debounce — a superseded in-flight fetch
+is cancelled instead) it queries LRCLIB —
 `GET lrclib.net/api/get?track_name&artist_name&album_name&duration` — and parses
 the returned LRC into `[LyricLine]`. Exactly those four fields are sent, and only
 for music-app sources (Spotify, Apple Music bundle IDs); browser media never
 leaves the machine. Results and 404 misses are cached in memory; the endpoint is
 keyless (courtesy User-Agent sent), duration matching tolerates ±2 s, and
-`album_name` is optional. Log-only until M5's tab system hosts the UI; M6
-settings add the opt-out toggle.
+`album_name` is optional. The expanded media row renders the result (3.9): a
+prev/active/next continuity window beside the title block, rows keyed by line
+number so line changes slide rather than swap, synced off the same
+`displayedElapsed(at:)` clock as the progress bar. Title/artist use
+`MarqueeText` (content-hugging, width-capped, scrolls on overflow); lyric and
+marquee animation pause entirely while the panel is collapsed. M6 settings add
+the opt-out toggle.
 
 **Path caveat (why we own the spawn).** The fork's own Swift API
 (`MediaController`) resolves the dylib via `Bundle(for:).executablePath`, which

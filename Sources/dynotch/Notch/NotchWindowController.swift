@@ -12,6 +12,7 @@ import SwiftUI
 final class NotchWindowController {
     private let state = NotchState()
     private let nowPlaying: NowPlaying
+    private let lyrics: LyricsService
     private var panel: NotchPanel?
     private var frames: NotchFrames?
     private var screenObserver: NSObjectProtocol?
@@ -30,13 +31,16 @@ final class NotchWindowController {
     /// - Parameters:
     ///   - nowPlaying: shared now-playing model, injected into the SwiftUI
     ///     environment for the expanded media UI.
+    ///   - lyrics: shared lyrics service; synced lyrics grow the expanded panel.
     ///   - sendPlaybackCommand: routes control-button actions to the media
     ///     service (wired at the composition root).
     ///   - sendSeek: routes absolute-position seeks to the media service.
     init(nowPlaying: NowPlaying,
+         lyrics: LyricsService,
          sendPlaybackCommand: @escaping (PlaybackCommand) -> Void,
          sendSeek: @escaping (TimeInterval) -> Void) {
         self.nowPlaying = nowPlaying
+        self.lyrics = lyrics
         self.sendPlaybackCommand = sendPlaybackCommand
         self.sendSeek = sendSeek
     }
@@ -124,6 +128,7 @@ final class NotchWindowController {
         let hosting = ClickThroughHostingView(rootView: NotchView()
             .environmentObject(state)
             .environmentObject(nowPlaying)
+            .environmentObject(lyrics)
             .environment(\.sendPlaybackCommand, sendPlaybackCommand)
             .environment(\.sendSeek, sendSeek))
         hosting.autoresizingMask = [.width, .height]

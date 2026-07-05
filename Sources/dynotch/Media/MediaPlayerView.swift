@@ -11,11 +11,14 @@ import SwiftUI
 struct MediaPlayerView: View {
     @EnvironmentObject private var nowPlaying: NowPlaying
     @EnvironmentObject private var state: NotchState
+    @EnvironmentObject private var lyrics: LyricsService
     @Environment(\.sendPlaybackCommand) private var sendCommand
     @Environment(\.sendSeek) private var sendSeek
     /// Drag position on the progress bar, 0...1; non-nil only mid-scrub, when it
     /// owns the fill and elapsed label instead of the extrapolated position.
     @State private var scrubFraction: CGFloat?
+
+    private var expanded: Bool { state.presentation == .expanded }
 
     var body: some View {
         if nowPlaying.title == nil {
@@ -34,24 +37,31 @@ struct MediaPlayerView: View {
             HStack(spacing: 14) {
                 artwork
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(nowPlaying.title ?? "")
+                    // Marquee window capped to the controls' width, so the
+                    // title/artist/buttons block reads as one square unit and
+                    // the lyrics column gets the rest. Short titles hug even
+                    // narrower; long ones scroll.
+                    MarqueeText(text: nowPlaying.title ?? "", maxWidth: 100, active: expanded)
                         .font(.headline)
                         .foregroundStyle(.white)
-                        .lineLimit(1)
-                        .truncationMode(.tail)
                     if let artist = nowPlaying.artist, !artist.isEmpty {
-                        Text(artist)
+                        MarqueeText(text: artist, maxWidth: 100, active: expanded)
                             .font(.subheadline)
                             .foregroundStyle(.white.opacity(0.6))
-                            .lineLimit(1)
-                            .truncationMode(.tail)
                     }
                     Spacer(minLength: 0)
                     controls
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
                 .frame(height: 88)   // pin to artwork height so the Spacer
                                      // bottom-aligns controls without inflating the row
+                if let lines = syncedLines {
+                    // Lyrics live in the otherwise-empty right half of the row —
+                    // no panel growth needed (the height machinery this replaced
+                    // is gone from the controller).
+                    lyricsView(lines)
+                } else {
+                    Spacer(minLength: 0)
+                }
             }
             if nowPlaying.duration > 0 {
                 progress
@@ -158,6 +168,53 @@ struct MediaPlayerView: View {
                 .contentShape(Rectangle())        // whole box clickable, not just glyph
         }
         .buttonStyle(NotchControlButtonStyle())
+    }
+
+    private var syncedLines: [LyricLine]? {
+        if case .synced(let lines)? = lyrics.current, !lines.isEmpty { return lines }
+        return nil
+    }
+
+    /// How far ahead of the playhead lyrics flip (seconds): community LRC
+    /// timestamps often run a touch late, and slightly-early reads better than
+    /// slightly-late in karaoke terms. Tunable by feel.
+    private static let lyricsLead: TimeInterval = 0.2
+
+    /// Synced-lyrics window (3.9): previous/active/next lines, active centered.
+    /// Each row's identity is its line number, so on a line change the active
+    /// line itself slides up into the dimmed slot, the next rises in from
+    /// below, and the old top row exits — never a content swap. Emphasis is
+    /// opacity-only (font-weight flips snap; opacity animates). The active line
+    /// stretches to three rows; context lines truncate at one.
+    /// Ticks 10×/s — line changes need much tighter granularity than the 0.5 s
+    /// progress tick — but only while expanded (paused when hidden, per the 3.5
+    /// lesson). Scrubbing previews the line at the scrub target, matching the
+    /// elapsed label.
+    private func lyricsView(_ lines: [LyricLine]) -> some View {
+        TimelineView(.animation(minimumInterval: 0.1, paused: !expanded)) { context in
+            let elapsed = Self.lyricsLead + (scrubFraction.map { Double($0) * nowPlaying.duration }
+                ?? nowPlaying.displayedElapsed(at: context.date))
+            let index = lines.lastIndex { $0.time <= elapsed }
+            let idx = index ?? -1
+            VStack(spacing: 4) {
+                ForEach([idx - 1, idx, idx + 1].filter { lines.indices.contains($0) },
+                        id: \.self) { i in
+                    Text(lines[i].text)
+                        .font(.callout)
+                        .foregroundStyle(.white.opacity(i == idx ? 0.95 : 0.4))
+                        .lineLimit(i == idx ? 3 : 1)   // active stretches; context truncates
+                        .truncationMode(.tail)
+                        .multilineTextAlignment(.center)
+                        .transition(.asymmetric(
+                            insertion: .move(edge: .bottom).combined(with: .opacity),
+                            removal: .move(edge: .top).combined(with: .opacity)))
+                }
+            }
+            .frame(height: 88)
+            .clipped()
+            .frame(maxWidth: .infinity)
+            .animation(.easeInOut(duration: 0.3), value: index)
+        }
     }
 
     private func fraction(for elapsed: TimeInterval) -> CGFloat {

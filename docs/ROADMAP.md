@@ -123,6 +123,23 @@ Legend: `[x]` done · `[ ]` not started.
   404 no-match (obscure track), and artist-less local files gated before any
   request; a late-arriving fetch for a skipped-past track is cached but not
   applied (stale-response guard).
+- [x] **3.9** Lyrics UI — synced lyrics render in the otherwise-empty column
+  right of the title/controls block in the media row (constant panel size; a
+  grow-the-panel approach was built first and discarded with its height
+  machinery). Continuity window: prev/active/next rows keyed by **line number**,
+  so a line change slides the active line up into the dimmed slot — never a
+  content swap; the active line stretches to three rows, context rows truncate
+  at one; emphasis is opacity-only (weight flips snap, opacity animates).
+  10 Hz tick + 0.2 s lead; residual per-song offset is the community LRC file's
+  timing, not ours. Title/artist became `MarqueeText`: hugs its content up to
+  the controls' width (~100 pt) so the block reads as a square and short titles
+  donate width to lyrics; longer text pauses then loops seamlessly. All lyric
+  and marquee animation is paused while collapsed (the 3.5 lesson). Fetch
+  pipeline tightened for the UI: zero debounce with in-flight cancellation on
+  track change, instant stale-clear, instant cache hits (~1 s to first lyric).
+  ✅ verified on-device across Spotify and Apple Music through iterative A/B
+  (single-line odometer built, compared, deleted): hits, no-match, browser gate,
+  skip-during-fetch, scrub-preview, wide/narrow titles.
 
 ## Milestone 4 — File shelf (MVP)
 
@@ -174,11 +191,10 @@ Legend: `[x]` done · `[ ]` not started.
 - Collapsed-wing menu-bar overlap (3.5) — while media is loaded the widened pill
   covers ~36 pt of (normally empty) menu bar per side. Accepted for MVP; shrink
   the wings if it ever collides with real menu items.
-- Lyrics — decided (3.8): LRCLIB, music-apps-only lookups, service built log-only.
-  Still open: UI placement (a lyrics pane when M5's tab system exists), the M6
-  opt-out toggle, and a copyright caveat for any commercial release —
-  community-transcribed lyrics are still copyrighted works; display-only for
-  personal use, revisit alongside the license/paywall decision.
+- Lyrics — decided (3.8/3.9): LRCLIB, music-apps-only lookups, UI shipped in the
+  media row. Still open: the M6 opt-out toggle, and a copyright caveat for any
+  commercial release — community-transcribed lyrics are still copyrighted works;
+  display-only for personal use, revisit alongside the license/paywall decision.
 - Expanded-panel menu-bar overlap — while expanded the panel covers the (usually
   empty) center of the menu bar. Kept the simple overlap for now (M2.4). Options to
   revisit if it conflicts with real content: (a) **shift-down on approach** —

@@ -11,6 +11,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private lazy var lyricsService = LyricsService(nowPlaying: nowPlaying)
     private lazy var notchController = NotchWindowController(
         nowPlaying: nowPlaying,
+        lyrics: lyricsService,
         sendPlaybackCommand: { [weak self] in self?.mediaService.send($0) },
         sendSeek: { [weak self] in self?.mediaService.seek(to: $0) }
     )

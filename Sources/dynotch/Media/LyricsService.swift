@@ -36,26 +36,29 @@ final class LyricsService: ObservableObject {
 
     private let nowPlaying: NowPlaying
     private var cache: [String: TrackLyrics] = [:]   // hits AND 404 misses
-    private var cancellable: AnyCancellable?
+    private var identityCancellable: AnyCancellable?
     /// Identity key the current fetch/`current` belongs to — a late response is
     /// dropped if the track changed while it was in flight.
     private var activeKey: String?
-    private var inFlightKey: String?
+    /// In-flight lookup. Cancelled the moment the track changes again — which
+    /// is what makes zero-debounce fetching safe during rapid skips: each
+    /// superseded request is aborted instead of completing.
+    private var fetchTask: Task<Void, Never>?
 
     init(nowPlaying: NowPlaying) {
         self.nowPlaying = nowPlaying
     }
 
-    /// Observes track identity and fetches on change. Deduplicated so
-    /// pause/seek payloads (same identity) never refetch; debounced so rapid
-    /// track-skipping doesn't spray requests.
+    /// Observes track identity, deduplicated so pause/seek payloads never
+    /// re-trigger. Fetches immediately on change (cancelling any in-flight
+    /// lookup); stale lyrics are dropped and cache hits applied in the same
+    /// breath, so pop-up latency is just the network round-trip.
     func start() {
         let np = nowPlaying
-        cancellable = np.objectWillChange
+        identityCancellable = np.objectWillChange
             .receive(on: DispatchQueue.main)   // read state AFTER the change lands
             .map { _ in MainActor.assumeIsolated { Self.identity(of: np) } }
             .removeDuplicates()
-            .debounce(for: .seconds(1.5), scheduler: DispatchQueue.main)
             .sink { [weak self] _ in
                 MainActor.assumeIsolated { self?.evaluate() }
             }
@@ -71,12 +74,14 @@ final class LyricsService: ObservableObject {
         guard let title = nowPlaying.title, !title.isEmpty,
               let artist = nowPlaying.artist, !artist.isEmpty,
               nowPlaying.duration > 0 else {
+            fetchTask?.cancel()
             activeKey = nil
             current = nil
             return
         }
         let source = nowPlaying.sourceBundleID ?? "unknown"
         guard Self.musicApps.contains(source) else {
+            fetchTask?.cancel()
             activeKey = nil
             current = nil
             log("lyrics: skipped (source \(source))")
@@ -84,16 +89,17 @@ final class LyricsService: ObservableObject {
         }
         let duration = Int(nowPlaying.duration.rounded())
         let key = "\(title)|\(artist)|\(nowPlaying.album ?? "")|\(duration)"
+        guard key != activeKey else { return }
+        fetchTask?.cancel()
         activeKey = key
         if let cached = cache[key] {
             current = cached
             log("lyrics: cache hit for \"\(title)\" — \(artist)")
             return
         }
-        guard inFlightKey != key else { return }
-        inFlightKey = key
+        current = nil   // the old track's lines never linger over a new song
         let album = nowPlaying.album
-        Task { [weak self] in
+        fetchTask = Task { [weak self] in
             await self?.fetch(key: key, title: title, artist: artist,
                               album: album, duration: duration)
         }
@@ -101,7 +107,6 @@ final class LyricsService: ObservableObject {
 
     private func fetch(key: String, title: String, artist: String,
                        album: String?, duration: Int) async {
-        defer { if inFlightKey == key { inFlightKey = nil } }
         var components = URLComponents(string: Self.endpoint)!
         var items = [
             URLQueryItem(name: "track_name", value: title),
@@ -151,6 +156,10 @@ final class LyricsService: ObservableObject {
                 log("lyrics: no match for \"\(title)\" — \(artist)")
             }
             if activeKey == key { current = result }   // drop if track changed mid-fetch
+        } catch is CancellationError {
+            // Superseded by a newer track — expected during rapid skips; silent.
+        } catch let error as URLError where error.code == .cancelled {
+            // Same, surfaced as a URLError by URLSession.
         } catch {
             log("lyrics: fetch failed for \"\(title)\": \(error.localizedDescription)")
         }

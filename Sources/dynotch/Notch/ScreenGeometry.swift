@@ -41,6 +41,7 @@ struct NotchFrames {
 
 extension ScreenGeometry {
     /// Milestone 2 placeholder — real size arrives with M3–5 content.
+    /// (A 600 pt widening for lyrics was tried and rejected — too wide.)
     static let expandedSize = CGSize(width: 520, height: 180)
 
     /// Width of each black wing flanking the hardware notch while media is
