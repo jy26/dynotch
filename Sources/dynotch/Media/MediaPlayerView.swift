@@ -10,7 +10,12 @@ import SwiftUI
 /// unknown duration hides the progress row.
 struct MediaPlayerView: View {
     @EnvironmentObject private var nowPlaying: NowPlaying
+    @EnvironmentObject private var state: NotchState
     @Environment(\.sendPlaybackCommand) private var sendCommand
+    @Environment(\.sendSeek) private var sendSeek
+    /// Drag position on the progress bar, 0...1; non-nil only mid-scrub, when it
+    /// owns the fill and elapsed label instead of the extrapolated position.
+    @State private var scrubFraction: CGFloat?
 
     var body: some View {
         if nowPlaying.title == nil {
@@ -81,9 +86,12 @@ struct MediaPlayerView: View {
     /// Ticks twice a second while visible; each tick re-derives elapsed from the
     /// model snapshot, so pause freezes and new payloads snap automatically.
     /// (0.5 s so a fresh track starts moving promptly with floored labels.)
+    /// While scrubbing (3.7) the drag location owns the fill and elapsed label;
+    /// the seek is sent once, on release.
     private var progress: some View {
         TimelineView(.periodic(from: .now, by: 0.5)) { context in
-            let elapsed = nowPlaying.displayedElapsed(at: context.date)
+            let elapsed = scrubFraction.map { Double($0) * nowPlaying.duration }
+                ?? nowPlaying.displayedElapsed(at: context.date)
             HStack(spacing: 8) {
                 Text(Self.timeString(elapsed))
                 GeometryReader { geo in
@@ -92,13 +100,39 @@ struct MediaPlayerView: View {
                         Capsule().fill(.white.opacity(0.85))
                             .frame(width: geo.size.width * fraction(for: elapsed))
                     }
+                    .frame(height: 4)
+                    .frame(maxHeight: .infinity)      // center the 4 pt bar in the hit zone
+                    .contentShape(Rectangle())
+                    .gesture(scrubGesture(width: geo.size.width))
                 }
-                .frame(height: 4)
+                .frame(height: 16)   // grabbable hit zone; the visual bar stays 4 pt
                 Text(Self.timeString(nowPlaying.duration))
             }
             .font(.caption2.monospacedDigit())
             .foregroundStyle(.white.opacity(0.6))
         }
+    }
+
+    /// Click = zero-length drag (minimumDistance 0), so tap-to-seek falls out of
+    /// the same gesture. `state.isScrubbing` suppresses the collapse paths while
+    /// the drag is active (the cursor may cross the panel edge mid-drag).
+    private func scrubGesture(width: CGFloat) -> some Gesture {
+        DragGesture(minimumDistance: 0)
+            .onChanged { value in
+                state.isScrubbing = true
+                scrubFraction = Self.clampedFraction(value.location.x, width: width)
+            }
+            .onEnded { value in
+                let fraction = Self.clampedFraction(value.location.x, width: width)
+                sendSeek(Double(fraction) * nowPlaying.duration)
+                scrubFraction = nil
+                state.isScrubbing = false
+            }
+    }
+
+    private static func clampedFraction(_ x: CGFloat, width: CGFloat) -> CGFloat {
+        guard width > 0 else { return 0 }
+        return min(max(x / width, 0), 1)
     }
 
     /// Play/pause sends `toggle_play_pause` rather than branching on `isPlaying`
@@ -152,10 +186,20 @@ private struct SendPlaybackCommandKey: EnvironmentKey {
     static let defaultValue: (PlaybackCommand) -> Void = { _ in }   // no-op default
 }
 
+private struct SendSeekKey: EnvironmentKey {
+    static let defaultValue: (TimeInterval) -> Void = { _ in }   // no-op default
+}
+
 extension EnvironmentValues {
     /// Injected by `NotchWindowController`; routes to `MediaRemoteAdapterService.send`.
     var sendPlaybackCommand: (PlaybackCommand) -> Void {
         get { self[SendPlaybackCommandKey.self] }
         set { self[SendPlaybackCommandKey.self] = newValue }
+    }
+
+    /// Injected by `NotchWindowController`; routes to `MediaRemoteAdapterService.seek(to:)`.
+    var sendSeek: (TimeInterval) -> Void {
+        get { self[SendSeekKey.self] }
+        set { self[SendSeekKey.self] = newValue }
     }
 }

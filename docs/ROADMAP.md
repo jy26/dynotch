@@ -96,12 +96,20 @@ Legend: `[x]` done · `[ ]` not started.
   Future path: AppleScript per-app integration (Music and Spotify both expose
   shuffle/repeat read+write) — needs Automation permission prompts, pairs with
   M6's permission-gated features.
-- [ ] **3.7** Seek on the progress bar — click/drag → `set_time <seconds>`;
+- [x] **3.7** Seek on the progress bar — click/drag → `set_time <seconds>`;
   scrub position owns the bar mid-drag. **Spike first** (lesson from 3.6 / the
   full-screen saga): confirm `set_time` actually moves both players via a
   temporary trigger BEFORE building the drag UI — position *reads* are verified,
   position *writes* are not, and MediaRemote commands are optional for apps.
   *Done when:* forward and backward seeks land in both players with no snap-back.
+  ✅ verified on-device: spike (temp ±15 s buttons) proved `set_time` on Spotify
+  both directions, 0-clamped, while paused, each seek confirmed by a fresh payload
+  ~0.2 s later; then the real UI — `DragGesture(minimumDistance: 0)` on the bar
+  (click = zero-length drag), 16 pt hit zone, scrub fraction owns fill + elapsed
+  label mid-drag, seek sent once on release — passed the full matrix on **both**
+  Spotify and Apple Music with no snap-back (an optimistic local position bridges
+  the confirmation gap; `NotchState.isScrubbing` suppresses both collapse paths so
+  a drag crossing the panel edge can't fold the panel).
 
 ## Milestone 4 — File shelf (MVP)
 

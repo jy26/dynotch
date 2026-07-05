@@ -10,7 +10,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private lazy var mediaService = MediaRemoteAdapterService(nowPlaying: nowPlaying)
     private lazy var notchController = NotchWindowController(
         nowPlaying: nowPlaying,
-        sendPlaybackCommand: { [weak self] in self?.mediaService.send($0) }
+        sendPlaybackCommand: { [weak self] in self?.mediaService.send($0) },
+        sendSeek: { [weak self] in self?.mediaService.seek(to: $0) }
     )
 
     func applicationDidFinishLaunching(_ notification: Notification) {

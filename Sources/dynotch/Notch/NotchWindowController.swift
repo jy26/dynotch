@@ -25,16 +25,20 @@ final class NotchWindowController {
     private var expandedWatchdog: Timer?
 
     private let sendPlaybackCommand: (PlaybackCommand) -> Void
+    private let sendSeek: (TimeInterval) -> Void
 
     /// - Parameters:
     ///   - nowPlaying: shared now-playing model, injected into the SwiftUI
     ///     environment for the expanded media UI.
     ///   - sendPlaybackCommand: routes control-button actions to the media
     ///     service (wired at the composition root).
+    ///   - sendSeek: routes absolute-position seeks to the media service.
     init(nowPlaying: NowPlaying,
-         sendPlaybackCommand: @escaping (PlaybackCommand) -> Void) {
+         sendPlaybackCommand: @escaping (PlaybackCommand) -> Void,
+         sendSeek: @escaping (TimeInterval) -> Void) {
         self.nowPlaying = nowPlaying
         self.sendPlaybackCommand = sendPlaybackCommand
+        self.sendSeek = sendSeek
     }
 
     /// Places the panel over the notch (if any) and starts observing display
@@ -110,14 +114,18 @@ final class NotchWindowController {
 
         let container = NotchContainerView()
         container.onHoverChange = { [weak self] hovering in
-            self?.state.presentation = hovering ? .expanded : .collapsed
+            guard let self else { return }
+            // Never collapse mid-scrub (3.7): the drag may cross the panel edge.
+            if !hovering, self.state.isScrubbing { return }
+            self.state.presentation = hovering ? .expanded : .collapsed
         }
         // ClickThroughHostingView: the panel is never key, so button clicks
         // arrive as "first mouse" and need the accepts-first-mouse opt-in.
         let hosting = ClickThroughHostingView(rootView: NotchView()
             .environmentObject(state)
             .environmentObject(nowPlaying)
-            .environment(\.sendPlaybackCommand, sendPlaybackCommand))
+            .environment(\.sendPlaybackCommand, sendPlaybackCommand)
+            .environment(\.sendSeek, sendSeek))
         hosting.autoresizingMask = [.width, .height]
         hosting.frame = container.bounds
         container.addSubview(hosting)
@@ -134,6 +142,7 @@ final class NotchWindowController {
         expandedWatchdog = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated {
                 guard let self, let frames = self.frames else { return }
+                guard !self.state.isScrubbing else { return }   // never collapse mid-scrub (3.7)
                 // Same tolerance as the container's exit guard (top-edge quirk).
                 if !frames.expanded.insetBy(dx: -2, dy: -2).contains(NSEvent.mouseLocation) {
                     self.state.presentation = .collapsed

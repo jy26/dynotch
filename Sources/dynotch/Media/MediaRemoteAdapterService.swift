@@ -55,17 +55,32 @@ final class MediaRemoteAdapterService {
     /// Sends one playback command down the loop's stdin (newline-delimited).
     /// Fire-and-forget: state comes back via the stream, never from here.
     func send(_ command: PlaybackCommand) {
+        writeLine(command.rawValue)
+    }
+
+    /// Seeks to an absolute position via the loop's `set_time <seconds>` command
+    /// (parsed with `doubleValue`, routed to MRMediaRemoteSetElapsedTime).
+    /// Optimistically moves the local position so the bar doesn't flash back to
+    /// the pre-seek extrapolation while the confirming payload is in flight.
+    func seek(to seconds: TimeInterval) {
+        let target = max(0, seconds)
+        writeLine("set_time " + String(format: "%.2f", target))
+        nowPlaying.elapsed = target
+        nowPlaying.elapsedAt = Date()
+    }
+
+    private func writeLine(_ line: String) {
         guard let handle = stdinPipe?.fileHandleForWriting else {
-            print("[dyNotch] command \(command.rawValue) dropped — adapter loop not running")
+            print("[dyNotch] command \(line) dropped — adapter loop not running")
             fflush(stdout)
             return
         }
         do {
-            try handle.write(contentsOf: Data((command.rawValue + "\n").utf8))
-            print("[dyNotch] sent command: \(command.rawValue)")
+            try handle.write(contentsOf: Data((line + "\n").utf8))
+            print("[dyNotch] sent command: \(line)")
             fflush(stdout)
         } catch {
-            print("[dyNotch] command \(command.rawValue) write failed: \(error)")
+            print("[dyNotch] command \(line) write failed: \(error)")
             fflush(stdout)
         }
     }

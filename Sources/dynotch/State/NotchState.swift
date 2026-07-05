@@ -20,6 +20,10 @@ final class NotchState: ObservableObject {
 
     @Published var presentation: Presentation = .collapsed
     @Published var tab: Tab = .media
+    /// True while the user is dragging the progress bar (3.7). The collapse paths
+    /// (hover exit, expanded watchdog) are suppressed so the panel can't fold
+    /// mid-drag when the cursor crosses its edge.
+    @Published var isScrubbing = false
     /// Collapsed (notch-hugging) pill size for the current screen; set by the
     /// controller on placement. Collapsed content pins itself to this strip.
     @Published var collapsedSize: CGSize = .zero
