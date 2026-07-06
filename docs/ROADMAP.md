@@ -143,7 +143,22 @@ Legend: `[x]` done · `[ ]` not started.
 
 ## Milestone 4 — File shelf (MVP)
 
-- [ ] **4.1** `ShelfModel` — held files as security-scoped bookmarks; persist.
+- [x] **4.1** `ShelfModel` — held files as bookmarks; persist. **Plain bookmarks,
+  not security-scoped** (plan said scoped): scoped bookmarks are keyed to the
+  creating app's identity, and an unsigned SwiftPM build gets a fresh ad-hoc
+  identity every rebuild — every rebuild bricked the store ("isn't in the correct
+  format"). Confirmed with a foreign-binary probe: scoped resolve of the same
+  blob fails, plain resolve succeeds. Revisit scoped at M6 once signing gives a
+  stable identity (sandbox prep). Store: `~/Library/Application Support/dyNotch/
+  shelf.plist` (explicit file — unbundled executable makes the UserDefaults
+  domain implicit). Restore refreshes stale bookmarks (file moved) and prunes
+  broken ones (file gone) *and* files sitting in the Trash — Finder "delete" is
+  a move the bookmark would otherwise follow (user Trash only; external-volume
+  `.Trashes` is an accepted gap). Adds dedupe by current path after re-resolving
+  held bookmarks, so a file moved mid-session can't be added twice. ✅ verified
+  on-device via temp status-menu triggers (removed in 4.2): add, persist across
+  relaunch, move → stale-refresh, Finder-delete → Trash-prune, duplicate (same
+  and moved path), remove-last, and cross-rebuild restore of a scoped-era store.
 - [ ] **4.2** Drop-in target in the expanded view. *Done when:* dragged files
   appear and persist.
 - [ ] **4.3** Drag-out back to Finder / other apps.
