@@ -13,6 +13,7 @@ final class NotchWindowController {
     private let state = NotchState()
     private let nowPlaying: NowPlaying
     private let lyrics: LyricsService
+    private let shelf: ShelfModel
     private var panel: NotchPanel?
     private var frames: NotchFrames?
     private var screenObserver: NSObjectProtocol?
@@ -32,15 +33,18 @@ final class NotchWindowController {
     ///   - nowPlaying: shared now-playing model, injected into the SwiftUI
     ///     environment for the expanded media UI.
     ///   - lyrics: shared lyrics service; synced lyrics grow the expanded panel.
+    ///   - shelf: shared shelf model; file drags over the panel drop into it.
     ///   - sendPlaybackCommand: routes control-button actions to the media
     ///     service (wired at the composition root).
     ///   - sendSeek: routes absolute-position seeks to the media service.
     init(nowPlaying: NowPlaying,
          lyrics: LyricsService,
+         shelf: ShelfModel,
          sendPlaybackCommand: @escaping (PlaybackCommand) -> Void,
          sendSeek: @escaping (TimeInterval) -> Void) {
         self.nowPlaying = nowPlaying
         self.lyrics = lyrics
+        self.shelf = shelf
         self.sendPlaybackCommand = sendPlaybackCommand
         self.sendSeek = sendSeek
     }
@@ -53,8 +57,10 @@ final class NotchWindowController {
         presentationCancellable = state.$presentation
             .removeDuplicates()
             .sink { [weak self] presentation in
-                self?.applyPresentation(presentation, animated: true)
-                self?.updateExpandedWatchdog(for: presentation)
+                guard let self else { return }
+                self.applyPresentation(presentation, animated: true)
+                self.updateExpandedWatchdog(for: presentation)
+                self.resetDefaultTab(for: presentation)
             }
         // Media appearing/disappearing resizes a collapsed pill live (3.5 wings).
         mediaCancellable = nowPlaying.$title
@@ -64,6 +70,10 @@ final class NotchWindowController {
                 guard let self else { return }
                 self.hasMedia = hasMedia
                 self.applyPresentation(self.state.presentation, animated: true)
+                // Media arriving/leaving changes which tab the next expand shows.
+                // (Safe property read: this sink is triggered by the title, not
+                // by `presentation`, so `state.presentation` is settled here.)
+                self.resetDefaultTab(for: self.state.presentation)
             }
         screenObserver = NotificationCenter.default.addObserver(
             forName: NSApplication.didChangeScreenParametersNotification,
@@ -119,9 +129,28 @@ final class NotchWindowController {
         let container = NotchContainerView()
         container.onHoverChange = { [weak self] hovering in
             guard let self else { return }
-            // Never collapse mid-scrub (3.7): the drag may cross the panel edge.
-            if !hovering, self.state.isScrubbing { return }
+            // Never collapse mid-scrub (3.7) or mid-file-drag (4.2): the drag
+            // may cross the panel edge.
+            if !hovering, self.state.isScrubbing || self.state.isFileDragTargeted { return }
             self.state.presentation = hovering ? .expanded : .collapsed
+        }
+        container.onFileDragChange = { [weak self] targeted in
+            guard let self else { return }
+            self.state.isFileDragTargeted = targeted
+            if targeted {
+                self.state.tab = .shelf
+                self.state.presentation = .expanded
+            } else if let frames = self.frames,
+                      !frames.expanded.insetBy(dx: -2, dy: -2).contains(NSEvent.mouseLocation) {
+                // `false` also fires (via draggingEnded) after a drop, with the
+                // cursor still inside — stay expanded then; the hover machinery
+                // and watchdog own the collapse from here. Only a drag that
+                // really left the panel collapses it.
+                self.state.presentation = .collapsed
+            }
+        }
+        container.onFileDrop = { [weak self] urls in
+            self?.shelf.add(urls)
         }
         // ClickThroughHostingView: the panel is never key, so button clicks
         // arrive as "first mouse" and need the accepts-first-mouse opt-in.
@@ -129,6 +158,7 @@ final class NotchWindowController {
             .environmentObject(state)
             .environmentObject(nowPlaying)
             .environmentObject(lyrics)
+            .environmentObject(shelf)
             .environment(\.sendPlaybackCommand, sendPlaybackCommand)
             .environment(\.sendSeek, sendSeek))
         hosting.autoresizingMask = [.width, .height]
@@ -140,6 +170,19 @@ final class NotchWindowController {
         return panel
     }
 
+    /// Interim rule until M5.3's tab system: the next expand shows media when
+    /// something is playing; otherwise a non-empty shelf — hover is the shelf's
+    /// only free-cursor path (mid-drag the cursor can't click the ✕).
+    ///
+    /// `presentation` is a parameter, and media presence comes from the settled
+    /// `hasMedia`, on purpose: @Published sinks fire on *willSet*, so reading
+    /// `state.presentation` (or `nowPlaying.title`) from inside their own sinks
+    /// sees the OLD value — doing so here clobbered the drag's `.shelf` tab.
+    private func resetDefaultTab(for presentation: NotchState.Presentation) {
+        guard presentation == .collapsed else { return }
+        state.tab = (!hasMedia && !shelf.items.isEmpty) ? .shelf : .media
+    }
+
     private func updateExpandedWatchdog(for presentation: NotchState.Presentation) {
         expandedWatchdog?.invalidate()
         expandedWatchdog = nil
@@ -147,7 +190,8 @@ final class NotchWindowController {
         expandedWatchdog = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated {
                 guard let self, let frames = self.frames else { return }
-                guard !self.state.isScrubbing else { return }   // never collapse mid-scrub (3.7)
+                // Never collapse mid-scrub (3.7) or mid-file-drag (4.2).
+                guard !self.state.isScrubbing, !self.state.isFileDragTargeted else { return }
                 // Same tolerance as the container's exit guard (top-edge quirk).
                 if !frames.expanded.insetBy(dx: -2, dy: -2).contains(NSEvent.mouseLocation) {
                     self.state.presentation = .collapsed

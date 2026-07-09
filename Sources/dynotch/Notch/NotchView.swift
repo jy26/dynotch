@@ -10,6 +10,8 @@ struct NotchView: View {
 
     private var expanded: Bool { state.presentation == .expanded }
     private var showsIndicator: Bool { !expanded && nowPlaying.title != nil }
+    private var showsMedia: Bool { expanded && state.tab == .media }
+    private var showsShelf: Bool { expanded && state.tab == .shelf }
 
     var body: some View {
         UnevenRoundedRectangle(
@@ -27,8 +29,17 @@ struct NotchView: View {
             MediaPlayerView()
                 .frame(width: ScreenGeometry.expandedSize.width,
                        height: ScreenGeometry.expandedSize.height)
-                .opacity(expanded ? 1 : 0)
-                .allowsHitTesting(expanded)   // no ghost clicks while collapsed
+                .opacity(showsMedia ? 1 : 0)
+                .allowsHitTesting(showsMedia)   // no ghost clicks while collapsed
+        }
+        .overlay(alignment: .top) {
+            // Shelf (4.2): same stable, opacity-gated pattern; a file drag over
+            // the panel switches the tab to reveal it.
+            ShelfView()
+                .frame(width: ScreenGeometry.expandedSize.width,
+                       height: ScreenGeometry.expandedSize.height)
+                .opacity(showsShelf ? 1 : 0)
+                .allowsHitTesting(showsShelf)
         }
         .overlay(alignment: .top) {
             // Collapsed indicator (3.5): fixed at the collapsed-wide size and
@@ -43,5 +54,6 @@ struct NotchView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)   // fill the panel bounds
         .animation(.easeOut(duration: NotchState.animationDuration), value: state.presentation)
         .animation(.easeOut(duration: NotchState.animationDuration), value: nowPlaying.title != nil)
+        .animation(.easeOut(duration: NotchState.animationDuration), value: state.tab)
     }
 }

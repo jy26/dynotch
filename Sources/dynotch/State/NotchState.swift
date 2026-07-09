@@ -24,6 +24,10 @@ final class NotchState: ObservableObject {
     /// (hover exit, expanded watchdog) are suppressed so the panel can't fold
     /// mid-drag when the cursor crosses its edge.
     @Published var isScrubbing = false
+    /// True while a file drag hovers the panel (4.2). Expands the panel (tracking
+    /// areas don't fire mid-drag, so hover can't), highlights the drop zone, and
+    /// suppresses the collapse paths like `isScrubbing`.
+    @Published var isFileDragTargeted = false
     /// Collapsed (notch-hugging) pill size for the current screen; set by the
     /// controller on placement. Collapsed content pins itself to this strip.
     @Published var collapsedSize: CGSize = .zero

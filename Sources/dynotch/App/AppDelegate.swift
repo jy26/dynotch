@@ -13,6 +13,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private lazy var notchController = NotchWindowController(
         nowPlaying: nowPlaying,
         lyrics: lyricsService,
+        shelf: shelf,
         sendPlaybackCommand: { [weak self] in self?.mediaService.send($0) },
         sendSeek: { [weak self] in self?.mediaService.seek(to: $0) }
     )
@@ -44,23 +45,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         header.isEnabled = false
         menu.addItem(header)
         menu.addItem(.separator())
-
-        // TEMP 4.1 — shelf verification triggers; removed in 4.2 when the real
-        // drop target lands.
-        let addItem = NSMenuItem(title: "Shelf: Add File…",
-                                 action: #selector(shelfAddFile), keyEquivalent: "")
-        addItem.target = self
-        menu.addItem(addItem)
-        let listItem = NSMenuItem(title: "Shelf: List",
-                                  action: #selector(shelfList), keyEquivalent: "")
-        listItem.target = self
-        menu.addItem(listItem)
-        let removeItem = NSMenuItem(title: "Shelf: Remove Last",
-                                    action: #selector(shelfRemoveLast), keyEquivalent: "")
-        removeItem.target = self
-        menu.addItem(removeItem)
-        menu.addItem(.separator())
-
         menu.addItem(
             withTitle: "Quit dyNotch",
             action: #selector(NSApplication.terminate(_:)),
@@ -69,37 +53,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         item.menu = menu
         statusItem = item
-    }
-
-    // TEMP 4.1 — shelf verification triggers; removed in 4.2.
-    @objc private func shelfAddFile() {
-        let panel = NSOpenPanel()
-        panel.allowsMultipleSelection = true
-        panel.canChooseDirectories = false
-        NSApp.activate(ignoringOtherApps: true)
-        if panel.runModal() == .OK {
-            shelf.add(panel.urls)
-        }
-    }
-
-    @objc private func shelfList() {
-        if shelf.items.isEmpty {
-            print("[dyNotch] shelf: (empty)")
-        } else {
-            for (index, url) in shelf.items.enumerated() {
-                print("[dyNotch] shelf[\(index)]: \(url.path)")
-            }
-        }
-        fflush(stdout)
-    }
-
-    @objc private func shelfRemoveLast() {
-        guard let last = shelf.items.last else {
-            print("[dyNotch] shelf: nothing to remove")
-            fflush(stdout)
-            return
-        }
-        shelf.remove(last)
     }
 
     /// Logs the detected notch geometry for the built-in display (Milestone 1.1

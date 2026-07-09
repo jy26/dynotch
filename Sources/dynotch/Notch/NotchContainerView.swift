@@ -11,10 +11,27 @@ final class NotchContainerView: NSView {
     /// Called with `true` on mouse-enter and `false` on mouse-exit (after a short
     /// debounce). The controller routes this into `NotchState.presentation`.
     var onHoverChange: ((Bool) -> Void)?
+    /// Called with `true` when a file drag enters the panel and `false` when it
+    /// leaves or the session ends (4.2). Drag events, not the tracking area:
+    /// enter/exit don't fire mid-drag, so this is what expands the panel for a
+    /// drop. May fire `false` twice around a drop (exited + ended) — handlers
+    /// must be idempotent.
+    var onFileDragChange: ((Bool) -> Void)?
+    /// Called with the file URLs released over the panel.
+    var onFileDrop: (([URL]) -> Void)?
 
     /// Debounce so a brief exit at the pill's edge doesn't flicker the state.
     private let exitDebounce: TimeInterval = 0.09
     private var pendingExit: DispatchWorkItem?
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        registerForDraggedTypes([.fileURL])
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) is not supported")
+    }
 
     override func updateTrackingAreas() {
         super.updateTrackingAreas()
@@ -35,6 +52,33 @@ final class NotchContainerView: NSView {
     override func mouseEntered(with event: NSEvent) {
         pendingExit?.cancel()
         onHoverChange?(true)
+    }
+
+    // MARK: File drags (4.2)
+
+    override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
+        onFileDragChange?(true)
+        return .copy
+    }
+
+    override func draggingExited(_ sender: NSDraggingInfo?) {
+        onFileDragChange?(false)
+    }
+
+    /// Also clears the flag: after a drop (or a cancel) no `draggingExited`
+    /// arrives, and a stuck `true` would suppress collapse forever.
+    override func draggingEnded(_ sender: NSDraggingInfo) {
+        onFileDragChange?(false)
+    }
+
+    override func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
+        let urls = sender.draggingPasteboard.readObjects(
+            forClasses: [NSURL.self],
+            options: [.urlReadingFileURLsOnly: true]
+        ) as? [URL] ?? []
+        guard !urls.isEmpty else { return false }
+        onFileDrop?(urls)
+        return true
     }
 
     override func mouseExited(with event: NSEvent) {

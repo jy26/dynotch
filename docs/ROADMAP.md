@@ -159,8 +159,26 @@ Legend: `[x]` done · `[ ]` not started.
   on-device via temp status-menu triggers (removed in 4.2): add, persist across
   relaunch, move → stale-refresh, Finder-delete → Trash-prune, duplicate (same
   and moved path), remove-last, and cross-rebuild restore of a scoped-era store.
-- [ ] **4.2** Drop-in target in the expanded view. *Done when:* dragged files
-  appear and persist.
+- [x] **4.2** Drop-in target in the expanded view. *Done when:* dragged files
+  appear and persist. Drag-triggered expansion is load-bearing: tracking areas
+  don't fire mid-drag, so hover can't open the panel — `NSDraggingDestination`
+  on `NotchContainerView` does (spike-gated: log-only handlers first proved
+  Finder drags reach the non-activating `.statusBar` panel at notch-strip size
+  and survive the mid-drag resize). A drag switches `NotchState.tab` to
+  `.shelf` (ShelfView joins MediaPlayerView as a stable, opacity-gated
+  overlay); drops feed the 4.1 model; after a drop the panel stays expanded
+  (geometry check distinguishes drop from drag-out — `draggingEnded` also
+  reports "left"). Interim tab rule until 5.3: hover opens media when playing,
+  else a non-empty shelf; drags always show the shelf. Tiles: Finder icon +
+  name, hover-✕ removes — via an `.activeAlways` HoverSensor, since SwiftUI's
+  `.onHover` is key-window-gated and the panel is never key (the 2.1 lesson
+  resurfacing in SwiftUI). Combine lesson: @Published sinks fire on *willSet* —
+  reading `state.presentation` inside its own sink saw the old value and
+  clobbered the drag's tab; pass the sink value, read no mid-flight properties.
+  Temp 4.1 menu triggers removed. ✅ verified on-device: drag-expand into shelf
+  (music playing and stopped), single/multi-file drops, duplicate skipped,
+  drag-away collapse, hover-✕ removal persisting across relaunch, media
+  hover-priority + controls/seek/lyrics regression-free.
 - [ ] **4.3** Drag-out back to Finder / other apps.
 - [ ] **4.4** AirDrop via `NSSharingService`.
 
