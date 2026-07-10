@@ -19,12 +19,17 @@ final class NotchWindowController {
     private var screenObserver: NSObjectProtocol?
     private var presentationCancellable: AnyCancellable?
     private var mediaCancellable: AnyCancellable?
+    private var dragCancellable: AnyCancellable?
     /// Whether media is loaded — widens the collapsed pill into indicator wings.
     private var hasMedia = false
     /// Safety net for missed `mouseExited` events (AppKit can drop one around
     /// clicks/popovers, leaving the panel stuck expanded): while expanded, cheaply
     /// confirm the cursor is still inside; collapse if events failed us.
     private var expandedWatchdog: Timer?
+    /// Follows the cursor while a shelf tile is dragged out (4.3) so the panel tracks
+    /// the drag. Runs regardless of presentation (unlike the watchdog, which only runs
+    /// while expanded) and self-terminates when the mouse button is released.
+    private var dragTracker: Timer?
 
     private let sendPlaybackCommand: (PlaybackCommand) -> Void
     private let sendSeek: (TimeInterval) -> Void
@@ -61,6 +66,13 @@ final class NotchWindowController {
                 self.applyPresentation(presentation, animated: true)
                 self.updateExpandedWatchdog(for: presentation)
                 self.resetDefaultTab(for: presentation)
+            }
+        // A tile drag-out (4.3) starts the cursor tracker. Use the emitted value —
+        // reading `state.isDraggingOut` here would see the pre-`willSet` value.
+        dragCancellable = state.$isDraggingOut
+            .removeDuplicates()
+            .sink { [weak self] dragging in
+                if dragging { self?.startDragTracker() }
             }
         // Media appearing/disappearing resizes a collapsed pill live (3.5 wings).
         mediaCancellable = nowPlaying.$title
@@ -130,8 +142,9 @@ final class NotchWindowController {
         container.onHoverChange = { [weak self] hovering in
             guard let self else { return }
             // Never collapse mid-scrub (3.7) or mid-file-drag (4.2): the drag
-            // may cross the panel edge.
-            if !hovering, self.state.isScrubbing || self.state.isFileDragTargeted { return }
+            // may cross the panel edge. Mid-drag-out (4.3) the tracker owns the panel.
+            if !hovering, self.state.isScrubbing || self.state.isFileDragTargeted
+                || self.state.isDraggingOut { return }
             self.state.presentation = hovering ? .expanded : .collapsed
         }
         container.onFileDragChange = { [weak self] targeted in
@@ -190,8 +203,10 @@ final class NotchWindowController {
         expandedWatchdog = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated {
                 guard let self, let frames = self.frames else { return }
-                // Never collapse mid-scrub (3.7) or mid-file-drag (4.2).
-                guard !self.state.isScrubbing, !self.state.isFileDragTargeted else { return }
+                // Never collapse mid-scrub (3.7), mid-file-drag (4.2), or mid-drag-out
+                // (4.3) — the drag tracker owns the panel during a tile drag-out.
+                guard !self.state.isScrubbing, !self.state.isFileDragTargeted,
+                      !self.state.isDraggingOut else { return }
                 // Same tolerance as the container's exit guard (top-edge quirk).
                 if !frames.expanded.insetBy(dx: -2, dy: -2).contains(NSEvent.mouseLocation) {
                     self.state.presentation = .collapsed
@@ -200,8 +215,37 @@ final class NotchWindowController {
         }
     }
 
+    /// While a shelf tile is being dragged out (4.3), follow the cursor so the panel
+    /// tracks the drag: collapse when the drag leaves the expanded frame, re-expand
+    /// (back to the shelf tab) when it returns. Polls rather than leaning on tracking
+    /// areas, which don't fire over the shrunken pill mid-drag, and runs while
+    /// collapsed too so it can re-expand. Self-terminates on mouse-up — `.onDrag`
+    /// has no drag-end callback, and the physical button state can't get stuck.
+    private func startDragTracker() {
+        dragTracker?.invalidate()
+        dragTracker = Timer.scheduledTimer(withTimeInterval: 0.08, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                if NSEvent.pressedMouseButtons & 0x1 == 0 {   // button released → drag over
+                    self.dragTracker?.invalidate()
+                    self.dragTracker = nil
+                    self.state.isDraggingOut = false           // hover/watchdog resume
+                    return
+                }
+                guard let frames = self.frames else { return }
+                if frames.expanded.insetBy(dx: -2, dy: -2).contains(NSEvent.mouseLocation) {
+                    if self.state.tab != .shelf { self.state.tab = .shelf }
+                    self.state.presentation = .expanded        // deduped by the sink
+                } else {
+                    self.state.presentation = .collapsed
+                }
+            }
+        }
+    }
+
     deinit {
         expandedWatchdog?.invalidate()
+        dragTracker?.invalidate()
         if let screenObserver {
             NotificationCenter.default.removeObserver(screenObserver)
         }

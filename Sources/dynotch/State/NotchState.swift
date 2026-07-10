@@ -28,6 +28,12 @@ final class NotchState: ObservableObject {
     /// areas don't fire mid-drag, so hover can't), highlights the drop zone, and
     /// suppresses the collapse paths like `isScrubbing`.
     @Published var isFileDragTargeted = false
+    /// True while the user drags a shelf tile *out* of the panel (4.3). Starts a
+    /// cursor-following tracker in the controller so the panel tracks the drag —
+    /// collapse when it leaves, re-expand when it returns. Runs even while collapsed
+    /// (tracking areas don't fire over the shrunken pill mid-drag) and is cleared
+    /// when the mouse button is released (`.onDrag` has no drag-end callback).
+    @Published var isDraggingOut = false
     /// Collapsed (notch-hugging) pill size for the current screen; set by the
     /// controller on placement. Collapsed content pins itself to this strip.
     @Published var collapsedSize: CGSize = .zero

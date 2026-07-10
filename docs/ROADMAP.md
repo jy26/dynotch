@@ -179,7 +179,26 @@ Legend: `[x]` done · `[ ]` not started.
   (music playing and stopped), single/multi-file drops, duplicate skipped,
   drag-away collapse, hover-✕ removal persisting across relaunch, media
   hover-priority + controls/seek/lyrics regression-free.
-- [ ] **4.3** Drag-out back to Finder / other apps.
+- [x] **4.3** Drag-out back to Finder / other apps. Each tile is a drag source
+  (`.onDrag` → `NSItemProvider(contentsOf:)`, which vends a real file
+  representation so the drop *copies* the file — `object: url as NSURL` would vend
+  a bare URL some targets treat as an alias). The panel **tracks** the drag rather
+  than freezing open: a cursor-follow tracker (started by `NotchState.isDraggingOut`
+  from the `.onDrag`) collapses when the drag leaves the expanded frame and
+  re-expands (to the shelf tab) when it returns — polled, since tracking areas
+  don't fire over the shrunken pill mid-drag, and it runs while collapsed too so it
+  can re-expand. Self-terminates on mouse-up (`.onDrag` has no end callback; a
+  sticky flag got stuck open, the physical button state can't). The other collapse
+  paths (hover exit, expanded watchdog) are gated on `isDraggingOut` so nothing
+  fights the tracker. Shelf polish folded in during verification: the tile row
+  moved into an AppKit `NSScrollView` (never-key panel → `ClickThroughHostingView`
+  doc + accepts-first-mouse so tile drag/✕ still land) with a mouse-wheel→horizontal
+  remap (amplified, so no Shift needed) and a **custom thin SwiftUI scrollbar** fed
+  by bridged scroll geometry — SwiftUI's own indicator rendered oddly in the panel
+  and a custom `NSScroller` clipped its knob; bigger Finder icons, centered block.
+  ✅ verified on-device: drag-out copies into Finder **and** another app (single/
+  multi type), drag / hover-✕ / scroll don't conflict, in↔out tracking is smooth
+  with no stuck panel, wheel + trackpad both scroll, bar hides when the row fits.
 - [ ] **4.4** AirDrop via `NSSharingService`.
 
 ## Milestone 5 — Live activities (MVP)
