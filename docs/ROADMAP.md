@@ -253,8 +253,20 @@ Legend: `[x]` done · `[ ]` not started.
   timer UI lands). ✅ verified on-device: 10 s countdown ticks each second →
   `finished` + beep; cancel stops it; start-while-running replaces; ticks continue
   with the menu open.
-- [ ] **5.3** Tab/state system so media, shelf, and activities share the expanded
-  view.
+- [x] **5.3** Tab/state system so media, shelf, and activities share the expanded
+  view. Battery (5.1) + timer (5.2) are threaded from `AppDelegate` into
+  `NotchWindowController` and injected into the panel environment (mirroring
+  `shelf`). `NotchView` gains a 4th opacity-gated overlay — `ActivityView` (battery
+  glyph + %/ETA and the timer countdown, side by side) — plus a **top-left tab
+  switcher** (`NotchTabBar`: media / shelf / activities icon buttons, active bright,
+  the rest dimmed; plain SwiftUI `Button`s that click through the never-key panel).
+  Auto-pick default each expand: **media if playing, else activities**; the shelf is
+  never an auto-default — reached only by dragging a file in (which forces `.shelf`)
+  or a tab-bar click. A click overrides for the session; the next collapse re-picks
+  (`resetDefaultTab`). Removed the superseded empty `ActivityModel` stub. ✅ verified
+  on-device: all three surfaces reachable via the switcher, activities shows live
+  battery + a running timer, auto-pick + drag→shelf behave as specified, and
+  media/shelf interactions are regression-free.
 - [ ] **5.4** Collapsed glanceable indicators for active activities.
 
 ## Milestone 6 — Polish & distribution

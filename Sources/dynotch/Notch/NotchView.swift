@@ -12,6 +12,7 @@ struct NotchView: View {
     private var showsIndicator: Bool { !expanded && nowPlaying.title != nil }
     private var showsMedia: Bool { expanded && state.tab == .media }
     private var showsShelf: Bool { expanded && state.tab == .shelf }
+    private var showsActivities: Bool { expanded && state.tab == .activities }
 
     var body: some View {
         UnevenRoundedRectangle(
@@ -42,6 +43,14 @@ struct NotchView: View {
                 .allowsHitTesting(showsShelf)
         }
         .overlay(alignment: .top) {
+            // Activities (5.3): battery + timer; same stable, opacity-gated pattern.
+            ActivityView()
+                .frame(width: ScreenGeometry.expandedSize.width,
+                       height: ScreenGeometry.expandedSize.height)
+                .opacity(showsActivities ? 1 : 0)
+                .allowsHitTesting(showsActivities)
+        }
+        .overlay(alignment: .top) {
             // Collapsed indicator (3.5): fixed at the collapsed-wide size and
             // top-anchored, so it crossfades out in place as the panel expands.
             // Stable + opacity-gated (identity churn flickers — the 3.3 lesson).
@@ -51,9 +60,48 @@ struct NotchView: View {
                 .opacity(showsIndicator ? 1 : 0)
                 .allowsHitTesting(false)      // decorative
         }
+        .overlay(alignment: .topLeading) {
+            // Tab switcher (5.3): media / shelf / activities, in the reserved top
+            // band left of the notch. Last overlay so it sits above the surfaces;
+            // fades with the panel via the presentation animation below.
+            NotchTabBar()
+                .padding(.leading, 18)
+                .padding(.top, 8)
+                .opacity(expanded ? 1 : 0)
+                .allowsHitTesting(expanded)
+        }
         .frame(maxWidth: .infinity, maxHeight: .infinity)   // fill the panel bounds
         .animation(.easeOut(duration: NotchState.animationDuration), value: state.presentation)
         .animation(.easeOut(duration: NotchState.animationDuration), value: nowPlaying.title != nil)
         .animation(.easeOut(duration: NotchState.animationDuration), value: state.tab)
+    }
+}
+
+/// The three-surface tab switcher (5.3). Plain SwiftUI `Button`s — they receive
+/// clicks in the never-key panel via `ClickThroughHostingView`'s first-mouse (the
+/// media controls / shelf ✕ prove it). The active tab is bright, the rest dimmed.
+private struct NotchTabBar: View {
+    @EnvironmentObject private var state: NotchState
+
+    private static let tabs: [(tab: NotchState.Tab, symbol: String)] = [
+        (.media, "music.note"),
+        (.shelf, "tray.full"),
+        (.activities, "bolt.fill"),
+    ]
+
+    var body: some View {
+        HStack(spacing: 14) {
+            ForEach(Self.tabs, id: \.symbol) { tab, symbol in
+                Button {
+                    state.tab = tab
+                } label: {
+                    Image(systemName: symbol)
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(.white.opacity(state.tab == tab ? 0.95 : 0.4))
+                        .frame(width: 20, height: 20)
+                }
+                .buttonStyle(.plain)
+            }
+        }
     }
 }

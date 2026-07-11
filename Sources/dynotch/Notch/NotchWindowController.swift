@@ -14,6 +14,8 @@ final class NotchWindowController {
     private let nowPlaying: NowPlaying
     private let lyrics: LyricsService
     private let shelf: ShelfModel
+    private let battery: BatteryMonitor
+    private let timer: TimerActivity
     private var panel: NotchPanel?
     private var frames: NotchFrames?
     private var screenObserver: NSObjectProtocol?
@@ -39,17 +41,23 @@ final class NotchWindowController {
     ///     environment for the expanded media UI.
     ///   - lyrics: shared lyrics service; synced lyrics grow the expanded panel.
     ///   - shelf: shared shelf model; file drags over the panel drop into it.
+    ///   - battery: shared battery monitor; shown on the activities tab (5.3).
+    ///   - timer: shared timer activity; shown on the activities tab (5.3).
     ///   - sendPlaybackCommand: routes control-button actions to the media
     ///     service (wired at the composition root).
     ///   - sendSeek: routes absolute-position seeks to the media service.
     init(nowPlaying: NowPlaying,
          lyrics: LyricsService,
          shelf: ShelfModel,
+         battery: BatteryMonitor,
+         timer: TimerActivity,
          sendPlaybackCommand: @escaping (PlaybackCommand) -> Void,
          sendSeek: @escaping (TimeInterval) -> Void) {
         self.nowPlaying = nowPlaying
         self.lyrics = lyrics
         self.shelf = shelf
+        self.battery = battery
+        self.timer = timer
         self.sendPlaybackCommand = sendPlaybackCommand
         self.sendSeek = sendSeek
     }
@@ -173,6 +181,8 @@ final class NotchWindowController {
             .environmentObject(nowPlaying)
             .environmentObject(lyrics)
             .environmentObject(shelf)
+            .environmentObject(battery)
+            .environmentObject(timer)
             .environment(\.sendPlaybackCommand, sendPlaybackCommand)
             .environment(\.sendSeek, sendSeek))
         hosting.autoresizingMask = [.width, .height]
@@ -184,9 +194,11 @@ final class NotchWindowController {
         return panel
     }
 
-    /// Interim rule until M5.3's tab system: the next expand shows media when
-    /// something is playing; otherwise a non-empty shelf — hover is the shelf's
-    /// only free-cursor path (mid-drag the cursor can't click the ✕).
+    /// Auto-picks the tab the *next* expand opens on (5.3): media when something's
+    /// playing, otherwise activities. The shelf is never an auto-default — it's
+    /// reached by dragging a file in (which forces `.shelf`) or a tab-bar click. A
+    /// tab-bar click overrides this for the current session; the next collapse
+    /// re-picks. Fires only on collapse, so it never yanks the tab mid-session.
     ///
     /// `presentation` is a parameter, and media presence comes from the settled
     /// `hasMedia`, on purpose: @Published sinks fire on *willSet*, so reading
@@ -194,7 +206,7 @@ final class NotchWindowController {
     /// sees the OLD value — doing so here clobbered the drag's `.shelf` tab.
     private func resetDefaultTab(for presentation: NotchState.Presentation) {
         guard presentation == .collapsed else { return }
-        state.tab = (!hasMedia && !shelf.items.isEmpty) ? .shelf : .media
+        state.tab = hasMedia ? .media : .activities
     }
 
     private func updateExpandedWatchdog(for presentation: NotchState.Presentation) {

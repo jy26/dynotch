@@ -16,6 +16,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         nowPlaying: nowPlaying,
         lyrics: lyricsService,
         shelf: shelf,
+        battery: battery,
+        timer: timer,
         sendPlaybackCommand: { [weak self] in self?.mediaService.send($0) },
         sendSeek: { [weak self] in self?.mediaService.seek(to: $0) }
     )
