@@ -237,7 +237,22 @@ Legend: `[x]` done · `[ ]` not started.
   refreshed on each real change. ✅ verified on-device: initial line on launch,
   plug→`charging`/`plugged in (not charging)`, unplug→`on battery`, one line per
   real change (no ETA-drift repeats).
-- [ ] **5.2** Timer activity (start / tick / finish).
+- [x] **5.2** Timer activity (start / tick / finish). `TimerActivity`
+  (`Sources/dynotch/Activities/`, an `@MainActor ObservableObject` like
+  `BatteryMonitor`) publishes a `TimerState` (duration, remaining, isFinished).
+  `start(_:)` stores a wall-clock `endDate` and runs a 1 s `Timer` in `.common`
+  mode (keeps ticking during menu/scroll tracking, not just `.default`); each tick
+  derives `remaining = max(0, endDate.timeIntervalSinceNow)` (jitter-proof and
+  sleep-safe). At zero, `finish()` latches `isFinished` (state holds at 00:00 until
+  cancelled, for 5.4's "done" indicator) and beeps (`NSSound.beep()` — a real user
+  notification needs a bundle/signing, deferred to M6). `cancel()` returns to idle;
+  a new `start` replaces a running one (single timer). **Log-only** — nothing reads
+  `state` yet (UI 5.4, tab routing 5.3). Driven for now by **temporary
+  status-menu triggers** (Start 10 s / 1 min, Cancel — `@objc` items on
+  `AppDelegate`, mirroring 4.1's throwaway shelf triggers; removed when the real
+  timer UI lands). ✅ verified on-device: 10 s countdown ticks each second →
+  `finished` + beep; cancel stops it; start-while-running replaces; ticks continue
+  with the menu open.
 - [ ] **5.3** Tab/state system so media, shelf, and activities share the expanded
   view.
 - [ ] **5.4** Collapsed glanceable indicators for active activities.

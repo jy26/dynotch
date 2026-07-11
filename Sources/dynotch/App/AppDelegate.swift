@@ -8,6 +8,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let nowPlaying = NowPlaying()
     private let shelf = ShelfModel()
     private let battery = BatteryMonitor()
+    private let timer = TimerActivity()
     // lazy: a stored-property initializer can't reference another stored property.
     private lazy var mediaService = MediaRemoteAdapterService(nowPlaying: nowPlaying)
     private lazy var lyricsService = LyricsService(nowPlaying: nowPlaying)
@@ -48,6 +49,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         header.isEnabled = false
         menu.addItem(header)
         menu.addItem(.separator())
+        addTimerTriggers(to: menu)
+        menu.addItem(.separator())
         menu.addItem(
             withTitle: "Quit dyNotch",
             action: #selector(NSApplication.terminate(_:)),
@@ -57,6 +60,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         item.menu = menu
         statusItem = item
     }
+
+    // TEMP (Milestone 5.2): pre-UI triggers to exercise the timer activity, mirroring
+    // 4.1's throwaway shelf triggers. Removed once a real "set a timer" UI lands.
+    private func addTimerTriggers(to menu: NSMenu) {
+        for (title, action) in [
+            ("Start 10 s timer", #selector(startTenSecondTimer)),
+            ("Start 1 min timer", #selector(startOneMinuteTimer)),
+            ("Cancel timer", #selector(cancelTimer)),
+        ] {
+            let entry = NSMenuItem(title: title, action: action, keyEquivalent: "")
+            entry.target = self
+            menu.addItem(entry)
+        }
+    }
+
+    @objc private func startTenSecondTimer() { timer.start(10) }
+    @objc private func startOneMinuteTimer() { timer.start(60) }
+    @objc private func cancelTimer() { timer.cancel() }
 
     /// Logs the detected notch geometry for the built-in display (Milestone 1.1
     /// verification). Uses `print` so it shows in the terminal under `swift run`.
