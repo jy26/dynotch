@@ -220,7 +220,23 @@ Legend: `[x]` done · `[ ]` not started.
 
 ## Milestone 5 — Live activities (MVP)
 
-- [ ] **5.1** Battery/charging monitor (IOKit) → activity model.
+- [x] **5.1** Battery/charging monitor (IOKit) → activity model. `BatteryMonitor`
+  (`Sources/dynotch/Activities/`, an `@MainActor ObservableObject` mirroring
+  `LyricsService`) reads the power-source snapshot via `IOPSCopyPowerSourcesInfo`/
+  `…List`/`GetPowerSourceDescription` (`import IOKit.ps` — auto-links, no
+  `Package.swift` change) into a `BatteryState` (fraction, isCharging, isPluggedIn,
+  isCharged, timeRemaining). Change source is a proper IOKit notification
+  (`IOPSNotificationCreateRunLoopSource` on the main run loop; `Unmanaged` context
+  → `MainActor.assumeIsolated`), not polling. **Log-only** — nothing reads `state`
+  yet (UI is 5.4, tab routing 5.3). Owned/`start()`ed in `AppDelegate`,
+  `stop()`ed on terminate. Two fixes from verification: the ETA is reported
+  directionally (to-full while charging, to-empty only while discharging, none
+  while plugged-but-holding — no bogus "0:00 to empty"), and the log is **gated on
+  a reported signature** (percent + charging/plugged/charged) so the constantly
+  re-estimated ETA wobble doesn't spam — the ETA still rides along in `state`,
+  refreshed on each real change. ✅ verified on-device: initial line on launch,
+  plug→`charging`/`plugged in (not charging)`, unplug→`on battery`, one line per
+  real change (no ETA-drift repeats).
 - [ ] **5.2** Timer activity (start / tick / finish).
 - [ ] **5.3** Tab/state system so media, shelf, and activities share the expanded
   view.

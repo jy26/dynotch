@@ -7,6 +7,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem?
     private let nowPlaying = NowPlaying()
     private let shelf = ShelfModel()
+    private let battery = BatteryMonitor()
     // lazy: a stored-property initializer can't reference another stored property.
     private lazy var mediaService = MediaRemoteAdapterService(nowPlaying: nowPlaying)
     private lazy var lyricsService = LyricsService(nowPlaying: nowPlaying)
@@ -26,11 +27,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         mediaService.start()
         lyricsService.start()
         shelf.start()
+        battery.start()
         notchController.start()
     }
 
     func applicationWillTerminate(_ notification: Notification) {
         mediaService.stop()
+        battery.stop()
     }
 
     private func setUpStatusItem() {
