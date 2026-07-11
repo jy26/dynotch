@@ -34,6 +34,11 @@ final class NotchState: ObservableObject {
     /// (tracking areas don't fire over the shrunken pill mid-drag) and is cleared
     /// when the mouse button is released (`.onDrag` has no drag-end callback).
     @Published var isDraggingOut = false
+    /// True while a tile's share sheet (`NSSharingServicePicker`) is open (4.4).
+    /// The popover anchors to a view inside the panel and the cursor leaves the
+    /// panel to reach it, so — like the drag flags — the collapse paths are
+    /// suppressed to keep the panel (and the anchor) put until the sheet closes.
+    @Published var isSharing = false
     /// Collapsed (notch-hugging) pill size for the current screen; set by the
     /// controller on placement. Collapsed content pins itself to this strip.
     @Published var collapsedSize: CGSize = .zero

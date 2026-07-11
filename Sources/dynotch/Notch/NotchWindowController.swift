@@ -142,9 +142,10 @@ final class NotchWindowController {
         container.onHoverChange = { [weak self] hovering in
             guard let self else { return }
             // Never collapse mid-scrub (3.7) or mid-file-drag (4.2): the drag
-            // may cross the panel edge. Mid-drag-out (4.3) the tracker owns the panel.
+            // may cross the panel edge. Mid-drag-out (4.3) the tracker owns the
+            // panel; while a share sheet is open (4.4) keep its anchor put.
             if !hovering, self.state.isScrubbing || self.state.isFileDragTargeted
-                || self.state.isDraggingOut { return }
+                || self.state.isDraggingOut || self.state.isSharing { return }
             self.state.presentation = hovering ? .expanded : .collapsed
         }
         container.onFileDragChange = { [weak self] targeted in
@@ -203,10 +204,10 @@ final class NotchWindowController {
         expandedWatchdog = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated {
                 guard let self, let frames = self.frames else { return }
-                // Never collapse mid-scrub (3.7), mid-file-drag (4.2), or mid-drag-out
-                // (4.3) — the drag tracker owns the panel during a tile drag-out.
+                // Never collapse mid-scrub (3.7), mid-file-drag (4.2), mid-drag-out
+                // (4.3 — the tracker owns the panel), or while a share sheet is open (4.4).
                 guard !self.state.isScrubbing, !self.state.isFileDragTargeted,
-                      !self.state.isDraggingOut else { return }
+                      !self.state.isDraggingOut, !self.state.isSharing else { return }
                 // Same tolerance as the container's exit guard (top-edge quirk).
                 if !frames.expanded.insetBy(dx: -2, dy: -2).contains(NSEvent.mouseLocation) {
                     self.state.presentation = .collapsed

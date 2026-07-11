@@ -3,8 +3,9 @@ import SwiftUI
 
 /// Drag-and-drop shelf shown in the expanded notch (Milestone 4). Hosted by
 /// `NotchView` as one stable, opacity-gated overlay; a file drag over the panel
-/// switches `NotchState.tab` to `.shelf` to reveal it. Drop-in (4.2) and drag-out
-/// (4.3, `.onDrag` per tile) both work; AirDrop is 4.4.
+/// switches `NotchState.tab` to `.shelf` to reveal it. Drop-in (4.2), drag-out
+/// (4.3, `.onDrag` per tile), and share/AirDrop (4.4, a per-tile hover button →
+/// `NSSharingServicePicker`) are all wired up.
 struct ShelfView: View {
     @EnvironmentObject private var shelf: ShelfModel
     @EnvironmentObject private var state: NotchState
@@ -53,6 +54,7 @@ struct ShelfView: View {
             TileScroller(urls: shelf.items,
                          onDragStart: { state.isDraggingOut = true },
                          onRemove: { shelf.remove($0) },
+                         onSharing: { state.isSharing = $0 },
                          onMetrics: { x, content, viewport in
                              scrollX = x; contentWidth = content; viewportWidth = viewport
                          })
@@ -89,6 +91,8 @@ private struct ShelfTile: View {
     let url: URL
     let onDragStart: () -> Void
     let onRemove: () -> Void
+    /// Called `true` when this tile's share sheet opens and `false` when it closes.
+    let onSharing: (Bool) -> Void
     @State private var hovering = false
 
     var body: some View {
@@ -103,7 +107,7 @@ private struct ShelfTile: View {
                 .lineLimit(1)
                 .truncationMode(.middle)
         }
-        .frame(width: 76)
+        .frame(width: 90)   // room for the hover controls to flank the icon, not sit on it
         .padding(.vertical, 6)
         .onDrag {
             onDragStart()   // controller then tracks the drag: collapse out, expand back in
@@ -122,6 +126,12 @@ private struct ShelfTile: View {
                 }
                 .buttonStyle(.plain)
             }
+        }
+        // Persistent (not `if hovering`): the share popover anchors to this view and
+        // must survive the cursor leaving the tile — the icon just gates on hover.
+        .overlay(alignment: .topLeading) {
+            ShareButton(url: url, hovered: hovering, onSharing: onSharing)
+                .frame(width: 18, height: 18)
         }
         .background(HoverSensor { hovering = $0 })
     }
@@ -180,6 +190,8 @@ private struct TileScroller: NSViewRepresentable {
     let urls: [URL]
     let onDragStart: () -> Void
     let onRemove: (URL) -> Void
+    /// Called `true`/`false` as any tile's share sheet opens/closes.
+    let onSharing: (Bool) -> Void
     /// Reports (scroll offset x, content width, viewport width) whenever they change.
     let onMetrics: (CGFloat, CGFloat, CGFloat) -> Void
 
@@ -220,7 +232,8 @@ private struct TileScroller: NSViewRepresentable {
                 ForEach(urls, id: \.self) { url in
                     ShelfTile(url: url,
                               onDragStart: onDragStart,
-                              onRemove: { onRemove(url) })
+                              onRemove: { onRemove(url) },
+                              onSharing: onSharing)
                 }
             }
             .padding(.horizontal, 12)
@@ -289,5 +302,88 @@ private final class HorizontalTileScrollView: NSScrollView {
         let x = min(max(0, clip.bounds.origin.x - step), maxX)
         clip.scroll(to: NSPoint(x: x, y: clip.bounds.origin.y))
         reflectScrolledClipView(clip)
+    }
+}
+
+/// The per-tile "share" affordance (4.4). AppKit rather than a SwiftUI `Button`
+/// like the ✕ on purpose: `NSSharingServicePicker` shows a popover that anchors to
+/// an `NSView`, and that anchor must persist while the popover is open — a SwiftUI
+/// `if hovering { … }` button would vanish the instant the cursor leaves the tile
+/// for the popover. So this view is always in the layout (the icon merely gates on
+/// hover) and presents the picker relative to *itself*, sidestepping any
+/// coordinate plumbing across the nested SwiftUI/AppKit boundary.
+private struct ShareButton: NSViewRepresentable {
+    let url: URL
+    let hovered: Bool
+    let onSharing: (Bool) -> Void
+
+    func makeNSView(context: Context) -> ShareButtonView {
+        let view = ShareButtonView()
+        view.url = url
+        view.onSharing = onSharing
+        view.hovered = hovered
+        return view
+    }
+
+    func updateNSView(_ view: ShareButtonView, context: Context) {
+        view.url = url
+        view.onSharing = onSharing
+        view.hovered = hovered
+    }
+}
+
+final class ShareButtonView: NSView, NSSharingServicePickerDelegate {
+    var url: URL?
+    var onSharing: ((Bool) -> Void)?
+    var hovered = false { didSet { icon.isHidden = !hovered } }
+
+    private let icon = NSImageView()
+    private var picker: NSSharingServicePicker?
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        let config = NSImage.SymbolConfiguration(pointSize: 12, weight: .semibold)
+        icon.image = NSImage(systemSymbolName: "square.and.arrow.up",
+                             accessibilityDescription: "Share")?.withSymbolConfiguration(config)
+        icon.contentTintColor = .white
+        icon.isHidden = true
+        icon.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(icon)
+        NSLayoutConstraint.activate([
+            icon.centerXAnchor.constraint(equalTo: centerXAnchor),
+            icon.centerYAnchor.constraint(equalTo: centerYAnchor),
+        ])
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) is not supported") }
+
+    // Never-key panel → clicks arrive as first mouse (the 2.1 / 4.2 lesson).
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+
+    // Only intercept while the icon is shown; otherwise transparent, so a drag or
+    // click starting in this corner still reaches the tile (the HoverSensor lesson).
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        guard hovered else { return nil }
+        return super.hitTest(point) != nil ? self : nil
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        guard let url else { return }
+        onSharing?(true)
+        let picker = NSSharingServicePicker(items: [url])
+        picker.delegate = self
+        self.picker = picker
+        // The panel hugs the top of the screen, so point the popover downward
+        // (`.minY` — this view isn't flipped) where there's room; `.maxY` aimed it
+        // into the sliver above the notch and the sheet got squeezed small.
+        picker.show(relativeTo: bounds, of: self, preferredEdge: .minY)
+    }
+
+    // Fires with the chosen service, or nil when dismissed — either way the popover
+    // is gone, so release the suppression flag and drop the retained picker.
+    func sharingServicePicker(_ sharingServicePicker: NSSharingServicePicker,
+                              didChoose service: NSSharingService?) {
+        onSharing?(false)
+        picker = nil
     }
 }

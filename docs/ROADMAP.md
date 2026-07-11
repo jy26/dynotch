@@ -199,7 +199,24 @@ Legend: `[x]` done · `[ ]` not started.
   ✅ verified on-device: drag-out copies into Finder **and** another app (single/
   multi type), drag / hover-✕ / scroll don't conflict, in↔out tracking is smooth
   with no stuck panel, wheel + trackpad both scroll, bar hides when the row fits.
-- [ ] **4.4** AirDrop via `NSSharingService`.
+- [x] **4.4** AirDrop via `NSSharingService`. A per-tile **hover "share" button**
+  (top-leading, mirroring the ✕) opens the standard macOS share sheet
+  (`NSSharingServicePicker(items: [url])`) — AirDrop plus Messages/Mail/Notes/… —
+  so AirDrop is reached *through* the picker. The button is a persistent AppKit
+  `ShareButtonView` (an `NSViewRepresentable`), not a SwiftUI `if hovering { … }`
+  button, on purpose: the picker popover anchors to an `NSView` that must survive
+  the cursor leaving the tile, so it's always in the layout (icon gated on hover,
+  `hitTest` nil until hovered so a drag in that corner still works) and presents the
+  picker relative to *itself* — no coordinate plumbing across the nested
+  SwiftUI/AppKit boundary. Anchored `preferredEdge: .minY` (downward) since the
+  panel hugs the screen top. A new `NotchState.isSharing` flag (set on open, cleared
+  in the picker's `didChoose` delegate — fires on a choice *or* dismiss) gates the
+  collapse paths like `isDraggingOut`, so the panel stays put under the open sheet.
+  Findings: the popover **does** present interactively from the never-key,
+  non-activating `.statusBar` panel with **no `NSApp.activate` needed** (tried it —
+  didn't change anything). Tiles widened 76→90 pt so the share/✕ hover controls
+  flank the icon. ✅ verified on-device: share sheet opens with AirDrop working and
+  sends; panel doesn't fold under the sheet; ✕ / drag-out / scroll regression-free.
 
 ## Milestone 5 — Live activities (MVP)
 
