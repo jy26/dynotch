@@ -11,3 +11,6 @@ xcuserdata/
 
 # macOS
 .DS_Store
+
+# Built app bundle (produced by scripts/build-app.sh)
+/dyNotch.app/

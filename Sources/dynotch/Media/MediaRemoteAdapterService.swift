@@ -104,16 +104,26 @@ final class MediaRemoteAdapterService {
     }
 
     /// The adapter artifacts land next to our executable (`.build/<triple>/debug/`
-    /// under `swift run`): the dylib as a sibling file, run.pl inside the package's
-    /// resource bundle — scanned for rather than hardcoding the bundle's name.
+    /// under `swift run`, `Contents/MacOS` in the .app bundle): the dylib as a sibling
+    /// file, run.pl inside the package's resource bundle — scanned for rather than
+    /// hardcoding the bundle's name.
     private static func locateArtifacts() -> (runPL: String, dylibPath: String)? {
-        let dir = Bundle.main.bundleURL
-        let dylib = dir.appendingPathComponent("libMediaRemoteAdapter.dylib")
         let fm = FileManager.default
+        // The dylib sits next to the executable (its @loader_path rpath): `.build/<triple>/debug`
+        // under `swift run`, `Contents/MacOS` in the .app. NOT `Bundle.main.bundleURL`, which is
+        // the .app root when bundled (6.2).
+        let exeDir = Bundle.main.executableURL?.deletingLastPathComponent() ?? Bundle.main.bundleURL
+        let dylib = exeDir.appendingPathComponent("libMediaRemoteAdapter.dylib")
         guard fm.fileExists(atPath: dylib.path) else { return nil }
-        let runPL = (try? fm.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil))?
-            .filter { $0.pathExtension == "bundle" }
-            .compactMap { Bundle(url: $0)?.path(forResource: "run", ofType: "pl") }
+        // run.pl is inside the package's resource .bundle — beside the executable (`swift run`)
+        // or in `Contents/Resources` (the .app, where codesign wants resource bundles). Scan both.
+        let runPL = [exeDir, Bundle.main.resourceURL].compactMap { $0 }.lazy
+            .compactMap { dir -> String? in
+                (try? fm.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil))?
+                    .filter { $0.pathExtension == "bundle" }
+                    .compactMap { Bundle(url: $0)?.path(forResource: "run", ofType: "pl") }
+                    .first
+            }
             .first
         guard let runPL else { return nil }
         return (runPL, dylib.path)

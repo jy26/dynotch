@@ -317,7 +317,21 @@ Legend: `[x]` done · `[ ]` not started.
   overrides the locale unit → refetch). ✅ verified on-device: window opens + is interactive;
   weather hides/returns and flips units live; lyrics opt-out clears; choices persist across
   relaunch.
-- [ ] **6.2** Launch at login (`SMAppService`).
+- [x] **6.2** Launch at login (`SMAppService`) + the app's **first `.app` bundle**.
+  `SMAppService` registers a real bundle as a login item, so 6.2 introduces
+  `scripts/build-app.sh` (CLT-only, no Xcode): release build → assemble `dyNotch.app`
+  (generated Info.plist with `CFBundleIdentifier`/`LSUIElement`; the dylib beside the
+  binary in `MacOS/` for its `@loader_path` rpath, run.pl's resource bundle in
+  `Resources/`) → ad-hoc `codesign`. A `LaunchAtLogin` helper (`SMAppService.mainApp`
+  register/unregister/status) backs a **Launch at login** toggle in Settings (the OS is
+  the source of truth, not `@AppStorage`). Media-in-bundle fix: `locateArtifacts()` now
+  keys off the **executable's dir** (not `Bundle.main.bundleURL`, which is the .app root
+  when bundled) and scans both it and `Contents/Resources` for run.pl. Findings:
+  **ad-hoc signing is sufficient** for `register()` (no Developer ID needed for local
+  launch-at-login); the codesign-valid bundle both runs media and registers as a login
+  item. ✅ verified on-device: `.app` launches as a menu-bar agent with working media;
+  the toggle adds/removes dyNotch in System Settings › Login Items with no error.
+  (Developer-ID signing + notarization for distribution is 6.3.)
 - [ ] **6.3** Code signing + notarization pipeline.
 - [ ] **6.4** Sparkle auto-update; keep a clean licensing/paywall seam. *Not* Mac
   App Store (private-framework dependency).

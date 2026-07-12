@@ -6,9 +6,18 @@ struct SettingsView: View {
     @AppStorage(Prefs.showLyrics, store: Prefs.suite) private var showLyrics = true
     @AppStorage(Prefs.showWeather, store: Prefs.suite) private var showWeather = true
     @AppStorage(Prefs.temperatureUnit, store: Prefs.suite) private var temperatureUnit = TemperatureUnit.auto
+    // SMAppService is the source of truth (not @AppStorage); mirror its status in @State.
+    @State private var launchAtLogin = LaunchAtLogin.isEnabled
 
     var body: some View {
         Form {
+            Section("Startup") {
+                Toggle("Launch at login", isOn: Binding(
+                    get: { launchAtLogin },
+                    set: { launchAtLogin = $0; LaunchAtLogin.setEnabled($0) }
+                ))
+            }
+
             Section {
                 Toggle("Show lyrics", isOn: $showLyrics)
                 Toggle("Show weather", isOn: $showWeather)
@@ -29,6 +38,7 @@ struct SettingsView: View {
             }
         }
         .formStyle(.grouped)
-        .frame(width: 380, height: 240)
+        .frame(width: 380, height: 300)
+        .onAppear { launchAtLogin = LaunchAtLogin.isEnabled }   // re-sync the reused window
     }
 }

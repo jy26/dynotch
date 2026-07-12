@@ -38,6 +38,14 @@ swift run        # launch the menu-bar agent
 When it runs you should see a **menu-bar icon** and **no Dock icon**; the menu's
 **Quit** item exits the app.
 
+To build a runnable **`.app` bundle** (needed for launch-at-login via `SMAppService`;
+ad-hoc signed — Developer-ID signing/notarization is a later milestone):
+
+```sh
+./scripts/build-app.sh   # produces dyNotch.app
+open dyNotch.app
+```
+
 To work in Xcode (requires full Xcode installed), open the package directly:
 
 ```sh
