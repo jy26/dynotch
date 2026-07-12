@@ -1,10 +1,12 @@
 import AppKit
+import SwiftUI
 
 /// Owns process-wide, non-SwiftUI concerns: the menu-bar status item and, from
 /// Milestone 1 onward, the notch `NSPanel`.
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem?
+    private var settingsWindow: NSWindow?
     private let nowPlaying = NowPlaying()
     private let shelf = ShelfModel()
     private let battery = BatteryMonitor()
@@ -27,6 +29,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Menu-bar agent: no Dock icon, no app menu.
         NSApp.setActivationPolicy(.accessory)
+        Prefs.registerDefaults()
         setUpStatusItem()
         logNotchGeometry()
         mediaService.start()
@@ -55,6 +58,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         header.isEnabled = false
         menu.addItem(header)
         menu.addItem(.separator())
+        let settings = NSMenuItem(title: "Settings…", action: #selector(openSettings), keyEquivalent: ",")
+        settings.target = self
+        menu.addItem(settings)
+        menu.addItem(.separator())
         menu.addItem(
             withTitle: "Quit dyNotch",
             action: #selector(NSApplication.terminate(_:)),
@@ -63,6 +70,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         item.menu = menu
         statusItem = item
+    }
+
+    /// Opens the settings window. A manually-managed `NSWindow` hosting `SettingsView`
+    /// rather than the SwiftUI `Settings` scene: an `.accessory` app has no app menu, so
+    /// `showSettingsWindow:` has no handler in the responder chain and never opens. This
+    /// works regardless of activation policy; activating first brings it to the front.
+    @objc private func openSettings() {
+        if settingsWindow == nil {
+            let window = NSWindow(
+                contentRect: NSRect(x: 0, y: 0, width: 380, height: 240),
+                styleMask: [.titled, .closable],
+                backing: .buffered,
+                defer: false)
+            window.title = "dyNotch Settings"
+            window.contentView = NSHostingView(rootView: SettingsView())
+            window.isReleasedWhenClosed = false   // reuse across opens
+            window.center()
+            settingsWindow = window
+        }
+        NSApp.activate(ignoringOtherApps: true)
+        settingsWindow?.makeKeyAndOrderFront(nil)
     }
 
     /// Logs the detected notch geometry for the built-in display (Milestone 1.1

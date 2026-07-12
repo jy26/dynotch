@@ -37,6 +37,7 @@ final class LyricsService: ObservableObject {
     private let nowPlaying: NowPlaying
     private var cache: [String: TrackLyrics] = [:]   // hits AND 404 misses
     private var identityCancellable: AnyCancellable?
+    private var prefsCancellable: AnyCancellable?
     /// Identity key the current fetch/`current` belongs to — a late response is
     /// dropped if the track changed while it was in flight.
     private var activeKey: String?
@@ -62,6 +63,13 @@ final class LyricsService: ObservableObject {
             .sink { [weak self] _ in
                 MainActor.assumeIsolated { self?.evaluate() }
             }
+        // Re-evaluate when the "Show lyrics" pref flips, so it clears/loads live (6.1).
+        prefsCancellable = NotificationCenter.default
+            .publisher(for: UserDefaults.didChangeNotification, object: Prefs.suite)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                MainActor.assumeIsolated { self?.evaluate() }
+            }
     }
 
     /// Track identity for dedup — everything a lookup depends on.
@@ -71,6 +79,12 @@ final class LyricsService: ObservableObject {
     }
 
     private func evaluate() {
+        guard Prefs.showsLyrics else {           // opt-out (6.1) — no lookups, clear the UI
+            fetchTask?.cancel()
+            activeKey = nil
+            current = nil
+            return
+        }
         guard let title = nowPlaying.title, !title.isEmpty,
               let artist = nowPlaying.artist, !artist.isEmpty,
               nowPlaying.duration > 0 else {

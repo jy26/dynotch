@@ -304,7 +304,19 @@ Legend: `[x]` done · `[ ]` not started.
 
 ## Milestone 6 — Polish & distribution
 
-- [ ] **6.1** Settings window + `@AppStorage` prefs.
+- [x] **6.1** Settings window + persistent prefs. A "Settings…" status-menu item opens
+  a **manually-managed `NSWindow`** hosting `SettingsView` — the SwiftUI `Settings` scene's
+  `showSettingsWindow:` has no responder-chain handler in a menu-bar-only `.accessory` app
+  (spiked: the scene silently no-op'd, the manual window works, activating first brings it
+  front). Prefs are `@AppStorage` on an **explicit `UserDefaults(suiteName: "dyNotch")`**
+  suite (not `.standard` — the unbundled-app process-name-domain lesson from `ShelfModel`),
+  with `Prefs.registerDefaults()` at launch so services read the right value before Settings
+  is opened. Three prefs, wired **live** (services observe `UserDefaults.didChangeNotification`
+  on the suite): **Show lyrics** (opt-out → `LyricsService.evaluate()` clears/reloads),
+  **Show weather** (opt-out → `WeatherService` hides/refetches), **Temperature** (Auto/°F/°C,
+  overrides the locale unit → refetch). ✅ verified on-device: window opens + is interactive;
+  weather hides/returns and flips units live; lyrics opt-out clears; choices persist across
+  relaunch.
 - [ ] **6.2** Launch at login (`SMAppService`).
 - [ ] **6.3** Code signing + notarization pipeline.
 - [ ] **6.4** Sparkle auto-update; keep a clean licensing/paywall seam. *Not* Mac

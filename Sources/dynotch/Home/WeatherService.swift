@@ -25,6 +25,7 @@ final class WeatherService: ObservableObject {
     private static let geoURL = "https://ipapi.co/json/"
 
     private var refreshTimer: Timer?
+    private var prefsCancellable: AnyCancellable?
     private var location: (lat: Double, lon: Double, city: String?)?
 
     /// Fetches now, then every 30 minutes.
@@ -33,6 +34,12 @@ final class WeatherService: ObservableObject {
         refreshTimer = Timer.scheduledTimer(withTimeInterval: 1800, repeats: true) { [weak self] _ in
             Task { await self?.refresh() }
         }
+        // Re-fetch when the "Show weather" / temperature-unit prefs change (6.1) — this
+        // both hides/shows and re-requests with the new unit (the API carries the unit).
+        prefsCancellable = NotificationCenter.default
+            .publisher(for: UserDefaults.didChangeNotification, object: Prefs.suite)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in Task { await self?.refresh() } }
     }
 
     func stop() {
@@ -41,6 +48,7 @@ final class WeatherService: ObservableObject {
     }
 
     private func refresh() async {
+        guard Prefs.showsWeather else { current = nil; return }   // opt-out (6.1)
         if location == nil, let geo = await get(Self.geoURL, as: IPGeo.self) {
             location = (geo.latitude, geo.longitude, geo.city)
         }
@@ -83,7 +91,14 @@ final class WeatherService: ObservableObject {
         }
     }
 
-    private static var usesFahrenheit: Bool { Locale.current.measurementSystem == .us }
+    /// Honors the temperature-unit pref (6.1); `.auto` follows the locale.
+    private static var usesFahrenheit: Bool {
+        switch Prefs.temperature {
+        case .fahrenheit: return true
+        case .celsius:    return false
+        case .auto:       return Locale.current.measurementSystem == .us
+        }
+    }
     private static var temperatureUnit: String { usesFahrenheit ? "fahrenheit" : "celsius" }
     private static var unitSymbol: String { usesFahrenheit ? "F" : "C" }
 
