@@ -1,25 +1,58 @@
 import SwiftUI
 
-/// Collapsed now-playing indicator (Milestone 3.5): mini artwork in the left
-/// wing, a decorative visualizer in the right, flanking the hardware notch.
-/// The parent frames this view to the collapsed-wide pill size; the HStack's
-/// fixed-width wings pin to the edges and the Spacer spans the (invisible)
-/// notch strip between them.
+/// Collapsed glanceable indicator (3.5 media + 5.4 activities): two wings flanking
+/// the hardware notch. The left wing is the *identity* slot (media artwork, else a
+/// charging/timer glyph); the right wing is the *live* slot (a timer countdown, else
+/// the visualizer, else the charge percent). The parent frames this view to the
+/// collapsed-wide pill size; the fixed-width wings pin to the edges and the Spacer
+/// spans the (invisible) notch strip between them.
 struct CollapsedIndicatorView: View {
     @EnvironmentObject private var nowPlaying: NowPlaying
+    @EnvironmentObject private var timer: TimerActivity
 
     /// True only while visible AND playing — gates the visualizer's schedule so
     /// a hidden or paused indicator costs nothing.
     let animating: Bool
 
+    private var hasMedia: Bool { nowPlaying.title != nil }
+
     var body: some View {
         HStack(spacing: 0) {
-            artworkThumb
+            leftWing
                 .frame(width: ScreenGeometry.collapsedWingWidth)   // left wing
             Spacer(minLength: 0)          // spans the hardware notch — stays empty
-            AudioBarsView(animating: animating)
+            rightWing
                 .frame(width: ScreenGeometry.collapsedWingWidth)   // right wing
         }
+    }
+
+    /// Identity slot: media artwork, else a timer glyph.
+    @ViewBuilder private var leftWing: some View {
+        if hasMedia {
+            artworkThumb
+        } else if timer.state != nil {
+            wingGlyph("timer")
+        }
+    }
+
+    /// Live slot: the timer countdown, else the visualizer.
+    @ViewBuilder private var rightWing: some View {
+        if let state = timer.state {
+            Text(state.isFinished ? "Done" : state.clock)
+                .font(.system(size: 11, weight: .semibold))
+                .monospacedDigit()
+                .foregroundStyle(.white.opacity(0.9))
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+        } else if hasMedia {
+            AudioBarsView(animating: animating)
+        }
+    }
+
+    private func wingGlyph(_ symbol: String) -> some View {
+        Image(systemName: symbol)
+            .font(.system(size: 13))
+            .foregroundStyle(.white.opacity(0.85))
     }
 
     @ViewBuilder

@@ -31,11 +31,11 @@ enum ScreenGeometry {
 /// Collapsed + expanded panel frames, both in global screen coords (y-up).
 struct NotchFrames {
     let collapsed: CGRect       // == notch rect (idle)
-    let collapsedWide: CGRect   // notch rect + a wing each side (media loaded)
+    let collapsedWide: CGRect   // notch rect + a wing each side (glanceable content)
     let expanded: CGRect
 
-    func collapsed(hasMedia: Bool) -> CGRect {
-        hasMedia ? collapsedWide : collapsed
+    func collapsed(wide: Bool) -> CGRect {
+        wide ? collapsedWide : collapsed
     }
 }
 

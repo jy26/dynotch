@@ -13,13 +13,14 @@ final class NotchState: ObservableObject {
     }
 
     enum Tab {
+        case home
         case media
         case shelf
         case activities
     }
 
     @Published var presentation: Presentation = .collapsed
-    @Published var tab: Tab = .media
+    @Published var tab: Tab = .home
     /// True while the user is dragging the progress bar (3.7). The collapse paths
     /// (hover exit, expanded watchdog) are suppressed so the panel can't fold
     /// mid-drag when the cursor crosses its edge.
@@ -39,6 +40,10 @@ final class NotchState: ObservableObject {
     /// panel to reach it, so — like the drag flags — the collapse paths are
     /// suppressed to keep the panel (and the anchor) put until the sheet closes.
     @Published var isSharing = false
+    /// True while the timer's duration text field is focused (5.x). Keyboard editing
+    /// needs the panel key, and the cursor may leave the panel — suppress the
+    /// collapse paths so it can't fold mid-edit.
+    @Published var isEditingTimer = false
     /// Collapsed (notch-hugging) pill size for the current screen; set by the
     /// controller on placement. Collapsed content pins itself to this strip.
     @Published var collapsedSize: CGSize = .zero

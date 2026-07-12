@@ -8,6 +8,15 @@ struct TimerState: Equatable {
     let duration: TimeInterval
     var remaining: TimeInterval
     var isFinished: Bool
+
+    /// `M:SS` (or `H:MM:SS`) for the remaining time — the shared countdown label.
+    var clock: String {
+        let total = Int(remaining.rounded())
+        let hours = total / 3600, minutes = (total % 3600) / 60, seconds = total % 60
+        return hours > 0
+            ? "\(hours):\(String(format: "%02d:%02d", minutes, seconds))"
+            : "\(minutes):\(String(format: "%02d", seconds))"
+    }
 }
 
 /// Second live-activity source (Milestone 5.2): a single countdown timer with

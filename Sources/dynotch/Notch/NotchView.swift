@@ -7,9 +7,15 @@ import SwiftUI
 struct NotchView: View {
     @EnvironmentObject private var state: NotchState
     @EnvironmentObject private var nowPlaying: NowPlaying
+    @EnvironmentObject private var timer: TimerActivity
 
     private var expanded: Bool { state.presentation == .expanded }
-    private var showsIndicator: Bool { !expanded && nowPlaying.title != nil }
+    /// Anything worth a collapsed indicator (5.4): media or a running timer.
+    private var hasCollapsedContent: Bool {
+        nowPlaying.title != nil || timer.state != nil
+    }
+    private var showsIndicator: Bool { !expanded && hasCollapsedContent }
+    private var showsHome: Bool { expanded && state.tab == .home }
     private var showsMedia: Bool { expanded && state.tab == .media }
     private var showsShelf: Bool { expanded && state.tab == .shelf }
     private var showsActivities: Bool { expanded && state.tab == .activities }
@@ -22,6 +28,14 @@ struct NotchView: View {
             topTrailingRadius: 0
         )
         .fill(Color.black)
+        .overlay(alignment: .top) {
+            // Home (default landing surface): clock + date/greeting + glances.
+            HomeView()
+                .frame(width: ScreenGeometry.expandedSize.width,
+                       height: ScreenGeometry.expandedSize.height)
+                .opacity(showsHome ? 1 : 0)
+                .allowsHitTesting(showsHome)
+        }
         .overlay(alignment: .top) {
             // One stable instance, opacity-gated (an `if expanded` transition
             // churns view identity and flickers on quick re-hover). Fixed at the
@@ -72,18 +86,19 @@ struct NotchView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)   // fill the panel bounds
         .animation(.easeOut(duration: NotchState.animationDuration), value: state.presentation)
-        .animation(.easeOut(duration: NotchState.animationDuration), value: nowPlaying.title != nil)
+        .animation(.easeOut(duration: NotchState.animationDuration), value: hasCollapsedContent)
         .animation(.easeOut(duration: NotchState.animationDuration), value: state.tab)
     }
 }
 
-/// The three-surface tab switcher (5.3). Plain SwiftUI `Button`s — they receive
-/// clicks in the never-key panel via `ClickThroughHostingView`'s first-mouse (the
-/// media controls / shelf ✕ prove it). The active tab is bright, the rest dimmed.
+/// The tab switcher (5.3, + Home). Plain SwiftUI `Button`s — they receive clicks in
+/// the never-key panel via `ClickThroughHostingView`'s first-mouse (the media
+/// controls / shelf ✕ prove it). The active tab is bright, the rest dimmed.
 private struct NotchTabBar: View {
     @EnvironmentObject private var state: NotchState
 
     private static let tabs: [(tab: NotchState.Tab, symbol: String)] = [
+        (.home, "house.fill"),
         (.media, "music.note"),
         (.shelf, "tray.full"),
         (.activities, "bolt.fill"),

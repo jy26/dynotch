@@ -267,7 +267,34 @@ Legend: `[x]` done · `[ ]` not started.
   on-device: all three surfaces reachable via the switcher, activities shows live
   battery + a running timer, auto-pick + drag→shelf behave as specified, and
   media/shelf interactions are regression-free.
-- [ ] **5.4** Collapsed glanceable indicators for active activities.
+- [x] **5.4** Collapsed glanceable indicators for active activities. The collapsed
+  pill's wings (3.5) now also show a **running timer's countdown** (`M:SS`/`Done`),
+  alongside media (artwork + visualizer). Media+timer coexist: artwork (left wing) +
+  countdown (right wing). The widen condition broadened from media-only to
+  `hasMedia || timerActive` (`ScreenGeometry.collapsed(wide:)` + two controller
+  sinks); `CollapsedIndicatorView` became the single priority-ordered wing renderer.
+  Charging was **dropped from the collapsed pill** (redundant with the menu bar).
+  ✅ verified on-device: timer countdown ticks while collapsed, coexists with media,
+  widens/narrows smoothly, charging no longer widens the pill.
+
+### Milestone 5 — extras (beyond the original roadmap)
+- [x] **Home tab** — a default landing surface (`HomeView`): clock + date + greeting,
+  the tab the notch opens on when nothing's playing / no timer (`resetDefaultTab`:
+  media if playing → activities if a timer's running → else Home). A 4th tab-bar
+  icon (`house.fill`). Media's empty state became **"Nothing playing"**.
+- [x] **In-notch timer controls** — the activities tab is now two side-by-side widget
+  cards (battery + timer). The timer card sets/starts a timer via preset chips
+  (1/5/10/25 m), a `±` stepper, **and a typeable duration field** (parses `H:MM:SS` /
+  `M:SS` / `90s` / bare-minutes), then Start; a running timer shows countdown + Cancel.
+  Removed the temp 5.2 status-menu triggers.
+- [x] **Keyboard input in the never-key panel (spike)** — a `TextField` in the panel
+  needed keyboard focus, which fights the never-key design. `NotchPanel.canBecomeKey`
+  → true lets it become key Spotlight-style (non-text clicks stay first-mouse, so
+  focus only moves on a field click); `NotchState.isEditingTimer` suppresses the
+  collapse paths while editing. ✅ verified: typing works, panel doesn't steal focus
+  on button clicks, collapses normally after editing.
+- [ ] **Weather on Home** — current temp + condition (keyless HTTPS: Open-Meteo +
+  IP geolocation), filling the Home gap where battery used to be. *(in progress)*
 
 ## Milestone 6 — Polish & distribution
 

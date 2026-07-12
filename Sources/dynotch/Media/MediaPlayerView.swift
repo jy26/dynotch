@@ -22,11 +22,15 @@ struct MediaPlayerView: View {
 
     var body: some View {
         if nowPlaying.title == nil {
-            // Nothing playing — the M2 wordmark becomes the empty state.
-            Text("dyNotch")
-                .font(.headline)
-                .foregroundStyle(.white.opacity(0.55))
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            // Nothing playing — a quiet empty state (matches the shelf's).
+            VStack(spacing: 6) {
+                Image(systemName: "music.note")
+                    .font(.system(size: 22))
+                Text("Nothing playing")
+                    .font(.subheadline)
+            }
+            .foregroundStyle(.white.opacity(0.5))
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
             mediaContent
         }

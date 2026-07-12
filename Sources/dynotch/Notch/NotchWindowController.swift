@@ -22,8 +22,14 @@ final class NotchWindowController {
     private var presentationCancellable: AnyCancellable?
     private var mediaCancellable: AnyCancellable?
     private var dragCancellable: AnyCancellable?
-    /// Whether media is loaded — widens the collapsed pill into indicator wings.
+    private var timerCancellable: AnyCancellable?
+    /// Whether media is loaded — feeds the default-tab pick (5.3) and, with the timer
+    /// flag below, the collapsed-pill widen condition (5.4).
     private var hasMedia = false
+    /// A running/finished timer also widens the collapsed pill (5.4).
+    private var timerActive = false
+    /// The collapsed pill widens into wings whenever there's glanceable content.
+    private var widensPill: Bool { hasMedia || timerActive }
     /// Safety net for missed `mouseExited` events (AppKit can drop one around
     /// clicks/popovers, leaving the panel stuck expanded): while expanded, cheaply
     /// confirm the cursor is still inside; collapse if events failed us.
@@ -95,6 +101,16 @@ final class NotchWindowController {
                 // by `presentation`, so `state.presentation` is settled here.)
                 self.resetDefaultTab(for: self.state.presentation)
             }
+        // A running/finished timer also widens the collapsed pill so its glanceable
+        // countdown has room (5.4).
+        timerCancellable = timer.$state
+            .map { $0 != nil }
+            .removeDuplicates()
+            .sink { [weak self] active in
+                guard let self else { return }
+                self.timerActive = active
+                self.applyPresentation(self.state.presentation, animated: true)
+            }
         screenObserver = NotificationCenter.default.addObserver(
             forName: NSApplication.didChangeScreenParametersNotification,
             object: nil,
@@ -126,7 +142,7 @@ final class NotchWindowController {
     private func applyPresentation(_ presentation: NotchState.Presentation, animated: Bool) {
         guard let panel, let frames else { return }
         let target = (presentation == .expanded) ? frames.expanded
-                                                 : frames.collapsed(hasMedia: hasMedia)
+                                                 : frames.collapsed(wide: widensPill)
         guard panel.frame != target else { return }   // no-op / re-entrancy guard
         if animated {
             NSAnimationContext.runAnimationGroup { ctx in
@@ -153,7 +169,8 @@ final class NotchWindowController {
             // may cross the panel edge. Mid-drag-out (4.3) the tracker owns the
             // panel; while a share sheet is open (4.4) keep its anchor put.
             if !hovering, self.state.isScrubbing || self.state.isFileDragTargeted
-                || self.state.isDraggingOut || self.state.isSharing { return }
+                || self.state.isDraggingOut || self.state.isSharing
+                || self.state.isEditingTimer { return }
             self.state.presentation = hovering ? .expanded : .collapsed
         }
         container.onFileDragChange = { [weak self] targeted in
@@ -194,11 +211,12 @@ final class NotchWindowController {
         return panel
     }
 
-    /// Auto-picks the tab the *next* expand opens on (5.3): media when something's
-    /// playing, otherwise activities. The shelf is never an auto-default — it's
-    /// reached by dragging a file in (which forces `.shelf`) or a tab-bar click. A
-    /// tab-bar click overrides this for the current session; the next collapse
-    /// re-picks. Fires only on collapse, so it never yanks the tab mid-session.
+    /// Auto-picks the tab the *next* expand opens on: media when something's
+    /// playing, else activities when a timer is running (so you land where you can
+    /// see/cancel it), otherwise Home. The shelf is reached by dragging a file in
+    /// (which forces `.shelf`) or a tab-bar click. A tab-bar click overrides this
+    /// for the current session; the next collapse re-picks. Fires only on collapse,
+    /// so it never yanks the tab mid-session.
     ///
     /// `presentation` is a parameter, and media presence comes from the settled
     /// `hasMedia`, on purpose: @Published sinks fire on *willSet*, so reading
@@ -206,7 +224,13 @@ final class NotchWindowController {
     /// sees the OLD value — doing so here clobbered the drag's `.shelf` tab.
     private func resetDefaultTab(for presentation: NotchState.Presentation) {
         guard presentation == .collapsed else { return }
-        state.tab = hasMedia ? .media : .activities
+        if hasMedia {
+            state.tab = .media
+        } else if timerActive {
+            state.tab = .activities
+        } else {
+            state.tab = .home
+        }
     }
 
     private func updateExpandedWatchdog(for presentation: NotchState.Presentation) {
@@ -219,7 +243,8 @@ final class NotchWindowController {
                 // Never collapse mid-scrub (3.7), mid-file-drag (4.2), mid-drag-out
                 // (4.3 — the tracker owns the panel), or while a share sheet is open (4.4).
                 guard !self.state.isScrubbing, !self.state.isFileDragTargeted,
-                      !self.state.isDraggingOut, !self.state.isSharing else { return }
+                      !self.state.isDraggingOut, !self.state.isSharing,
+                      !self.state.isEditingTimer else { return }
                 // Same tolerance as the container's exit guard (top-edge quirk).
                 if !frames.expanded.insetBy(dx: -2, dy: -2).contains(NSEvent.mouseLocation) {
                     self.state.presentation = .collapsed
