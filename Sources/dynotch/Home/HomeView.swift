@@ -6,6 +6,8 @@ import SwiftUI
 /// (Battery/timer glances live on the activities tab — Home stays uncluttered;
 /// a weather widget is a natural future addition here.)
 struct HomeView: View {
+    @EnvironmentObject private var weather: WeatherService
+
     var body: some View {
         TimelineView(.everyMinute) { context in
             let now = context.date
@@ -16,6 +18,18 @@ struct HomeView: View {
                 Text("\(greeting(now)) · \(now.formatted(.dateTime.weekday(.wide).month().day()))")
                     .font(.system(size: 13))
                     .foregroundStyle(.white.opacity(0.6))
+                if let weather = weather.current {
+                    HStack(spacing: 5) {
+                        Image(systemName: weather.symbolName)
+                        Text("\(weather.temperature)°\(weather.unitSymbol)").monospacedDigit()
+                        if let city = weather.city {
+                            Text("· \(city)").foregroundStyle(.white.opacity(0.5))
+                        }
+                    }
+                    .font(.system(size: 13))
+                    .foregroundStyle(.white.opacity(0.8))
+                    .padding(.top, 3)
+                }
             }
         }
         .padding(.top, 40)            // clears the notch strip + tab bar

@@ -293,8 +293,14 @@ Legend: `[x]` done · `[ ]` not started.
   focus only moves on a field click); `NotchState.isEditingTimer` suppresses the
   collapse paths while editing. ✅ verified: typing works, panel doesn't steal focus
   on button clicks, collapses normally after editing.
-- [ ] **Weather on Home** — current temp + condition (keyless HTTPS: Open-Meteo +
-  IP geolocation), filling the Home gap where battery used to be. *(in progress)*
+- [x] **Weather on Home** — `WeatherService` (mirrors `LyricsService`'s networking:
+  `URLSession` async/await, `Decodable`, courtesy User-Agent, HTTPS with no ATS) fetches
+  current conditions from **Open-Meteo** using **IP geolocation** (`ipapi.co`, keyless —
+  CoreLocation's prompt is unreliable in this unbundled build). Refreshes at launch and
+  every 30 min; WMO code → SF Symbol + label; locale-based °F/°C. Shows a glyph + `74°F`
+  + city on Home, degrading silently when offline. Privacy: IP → ipapi.co, lat/lon →
+  Open-Meteo (opt-out is a natural M6 setting). ✅ verified on-device: a `glyph · NN°F ·
+  city` line renders on Home and logs, resolved from the machine's IP.
 
 ## Milestone 6 — Polish & distribution
 

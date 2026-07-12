@@ -16,6 +16,7 @@ final class NotchWindowController {
     private let shelf: ShelfModel
     private let battery: BatteryMonitor
     private let timer: TimerActivity
+    private let weather: WeatherService
     private var panel: NotchPanel?
     private var frames: NotchFrames?
     private var screenObserver: NSObjectProtocol?
@@ -57,6 +58,7 @@ final class NotchWindowController {
          shelf: ShelfModel,
          battery: BatteryMonitor,
          timer: TimerActivity,
+         weather: WeatherService,
          sendPlaybackCommand: @escaping (PlaybackCommand) -> Void,
          sendSeek: @escaping (TimeInterval) -> Void) {
         self.nowPlaying = nowPlaying
@@ -64,6 +66,7 @@ final class NotchWindowController {
         self.shelf = shelf
         self.battery = battery
         self.timer = timer
+        self.weather = weather
         self.sendPlaybackCommand = sendPlaybackCommand
         self.sendSeek = sendSeek
     }
@@ -200,6 +203,7 @@ final class NotchWindowController {
             .environmentObject(shelf)
             .environmentObject(battery)
             .environmentObject(timer)
+            .environmentObject(weather)
             .environment(\.sendPlaybackCommand, sendPlaybackCommand)
             .environment(\.sendSeek, sendSeek))
         hosting.autoresizingMask = [.width, .height]

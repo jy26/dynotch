@@ -9,6 +9,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let shelf = ShelfModel()
     private let battery = BatteryMonitor()
     private let timer = TimerActivity()
+    private let weather = WeatherService()
     // lazy: a stored-property initializer can't reference another stored property.
     private lazy var mediaService = MediaRemoteAdapterService(nowPlaying: nowPlaying)
     private lazy var lyricsService = LyricsService(nowPlaying: nowPlaying)
@@ -18,6 +19,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         shelf: shelf,
         battery: battery,
         timer: timer,
+        weather: weather,
         sendPlaybackCommand: { [weak self] in self?.mediaService.send($0) },
         sendSeek: { [weak self] in self?.mediaService.seek(to: $0) }
     )
@@ -31,12 +33,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         lyricsService.start()
         shelf.start()
         battery.start()
+        weather.start()
         notchController.start()
     }
 
     func applicationWillTerminate(_ notification: Notification) {
         mediaService.stop()
         battery.stop()
+        weather.stop()
     }
 
     private func setUpStatusItem() {
