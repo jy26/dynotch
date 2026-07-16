@@ -54,7 +54,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         )
 
         let menu = NSMenu()
-        let header = NSMenuItem(title: "dyNotch — early WIP", action: nil, keyEquivalent: "")
+        let header = NSMenuItem(title: "dyNotch", action: nil, keyEquivalent: "")
         header.isEnabled = false
         menu.addItem(header)
         menu.addItem(.separator())

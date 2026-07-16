@@ -2,18 +2,19 @@ import SwiftUI
 
 /// Entry point.
 ///
-/// dyNotch runs as a menu-bar *agent* (no Dock icon). The actual notch UI is an
-/// `NSPanel` owned by `AppDelegate` and is added in Milestone 1 — at this stage
-/// the app only installs a menu-bar item so the framework builds and launches.
+/// dyNotch runs as a menu-bar *agent* (no Dock icon). The notch UI — an `NSPanel` —
+/// and all long-lived services are owned by `AppDelegate`.
 @main
 struct DynotchApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
 
     var body: some Scene {
-        // No main window: this is an agent app. Preferences live in the standard
-        // Settings scene (fleshed out in Milestone 6).
+        // An `App` needs at least one `Scene`, but this agent app has no SwiftUI
+        // window: an `.accessory` app never reaches the `Settings` scene (no app menu
+        // → `showSettingsWindow:` has no handler). The real settings window is a manual
+        // `NSWindow` in `AppDelegate.openSettings()`; this is a no-op placeholder.
         Settings {
-            SettingsView()
+            EmptyView()
         }
     }
 }

@@ -6,10 +6,10 @@ activities, in the spirit of [NotchNook](https://lo.cafe/notchnook),
 [Alcove](https://tryalcove.com), and the open-source
 [Boring Notch](https://github.com/TheBoredTeam/boring.notch).
 
-> **Status: early WIP.** Milestones 0–2 are complete: the app runs as a menu-bar
-> agent with an interactive notch surface — hover expands it smoothly, leaving
-> collapses it. Media, shelf, and activities are in progress — see
-> [`docs/ROADMAP.md`](docs/ROADMAP.md).
+> **Status: MVP-complete.** Milestones 0–6.2 are done: the app runs as a menu-bar
+> agent with an interactive notch — media & lyrics, a file shelf, live activities,
+> a Home tab with weather, Settings, and launch-at-login all ship today. Next up is
+> Developer-ID signing/notarization and auto-update — see [`docs/ROADMAP.md`](docs/ROADMAP.md).
 
 ## Target
 
@@ -17,7 +17,7 @@ activities, in the spirit of [NotchNook](https://lo.cafe/notchnook),
   on external / non-notched displays.
 - Native **Swift** — SwiftUI for UI, AppKit (`NSPanel`) for the notch window.
 
-## Planned MVP features
+## Features
 
 - **Media & now-playing** — expandable player with artwork, track info, live
   progress, and play/pause/skip controls.
@@ -58,13 +58,14 @@ open Package.swift
 Package.swift                 # SwiftPM manifest (macOS 14+, executable target)
 Sources/dynotch/
 ├── DynotchApp.swift          # @main App + NSApplicationDelegateAdaptor
-├── App/AppDelegate.swift     # menu-bar status item; owns the notch panel (later)
+├── App/AppDelegate.swift     # menu-bar status item; owns the notch panel + services
 ├── Notch/                    # NotchPanel, NotchWindowController, ScreenGeometry, NotchView
-├── Media/                    # MediaRemoteAdapterService, NowPlaying
+├── Media/                    # MediaRemoteAdapterService, NowPlaying, LyricsService
 ├── Shelf/                    # ShelfModel, ShelfView
-├── Activities/               # ActivityModel, ActivityView
+├── Activities/               # BatteryMonitor, TimerActivity, ActivityView
+├── Home/                     # HomeView, WeatherService
 ├── State/NotchState.swift    # collapsed/expanded + active tab
-└── Settings/SettingsView.swift
+└── Settings/                 # SettingsView, Prefs, LaunchAtLogin
 docs/
 ├── ARCHITECTURE.md           # how it's put together
 └── ROADMAP.md                # milestone-by-milestone plan

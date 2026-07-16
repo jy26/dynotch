@@ -15,10 +15,8 @@ struct BatteryState: Equatable {
 /// First live-activity data source (Milestone 5.1): watches the battery / charging
 /// state via IOKit power-source notifications and publishes `BatteryState`.
 ///
-/// Log-only for now — `state` holds the latest reading but nothing reads it yet;
-/// the log lines are this increment's deliverable. The collapsed glanceable UI
-/// lands in 5.4 and the tab routing in 5.3 (mirrors how `LyricsService` shipped
-/// ahead of its UI).
+/// `state` is read by `ActivityView`'s charging card (5.3 tab routing) and the
+/// collapsed glanceable indicator (5.4).
 @MainActor
 final class BatteryMonitor: ObservableObject {
     /// Latest reading; `nil` when the machine has no internal battery (desktop).

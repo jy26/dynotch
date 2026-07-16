@@ -24,10 +24,9 @@ struct TimerState: Equatable {
 /// tick, so ticks are jitter-proof and survive sleep (on wake it reads the correct
 /// value, or already-finished, rather than a paused-behind one).
 ///
-/// Log-only for now — `state` holds the countdown but nothing reads it yet; the log
-/// lines (and the finish beep) are this increment's deliverable. The glanceable UI
-/// lands in 5.4 and tab routing in 5.3 (mirrors how `BatteryMonitor` shipped ahead
-/// of its UI). Single timer: `start` replaces a running one.
+/// `state` drives `ActivityView`'s timer card (5.3 tab routing) and the collapsed
+/// glanceable indicator (5.4); `NSSound.beep()` fires on finish. Single timer:
+/// `start` replaces a running one.
 @MainActor
 final class TimerActivity: ObservableObject {
     /// Current countdown; `nil` when idle.

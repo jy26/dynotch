@@ -24,8 +24,7 @@ enum TrackLyrics {
 /// Verified contract (2026-07-04): duration tolerance ±2 s, `album_name`
 /// optional, no match is a clean JSON 404, instrumentals are flagged.
 ///
-/// Log-only for now: `current` holds the parsed result for M5's lyrics UI, but
-/// nothing reads it yet — the log lines are this increment's deliverable.
+/// `current` feeds the synced-lyrics UI in `MediaPlayerView` (3.9).
 @MainActor
 final class LyricsService: ObservableObject {
     private static let musicApps: Set<String> = ["com.spotify.client", "com.apple.Music"]
